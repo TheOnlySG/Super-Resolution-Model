@@ -1,14 +1,16 @@
 import os
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import StreamingResponse, JSONResponse
+import shutil
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional
 import torch
-from backend.inference import load_model, run_inference
 
-app = FastAPI(title="RCAN Satellite Super-Resolution API")
+from backend.inference import load_model, run_inference_pipeline, TEMP_DIR
 
-# Add CORS middleware to allow the frontend to access the API
+app = FastAPI(title="RCAN Satellite Super-Resolution Workstation")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,21 +19,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global variables to hold model state
 MODEL = None
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "model", "rcan_improved.pth")
+MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(os.path.dirname(__file__), "..", "model", "rcan_improved.pth"))
 
 @app.on_event("startup")
 async def startup_event():
-    """Load the model when the API starts."""
     global MODEL
     print(f"Starting up... Loading model from {MODEL_PATH} onto {DEVICE}")
     try:
         if not os.path.exists(MODEL_PATH):
             print(f"WARNING: Model file not found at {MODEL_PATH}")
             return
-            
         MODEL, _, _ = load_model(MODEL_PATH, DEVICE)
         print("Model loaded successfully.")
     except Exception as e:
@@ -39,7 +38,6 @@ async def startup_event():
 
 @app.get("/health")
 async def health_check():
-    """Simple health check endpoint."""
     return JSONResponse({
         "status": "ok",
         "model_loaded": MODEL is not None,
@@ -47,33 +45,48 @@ async def health_check():
     })
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+async def predict(lr_file: UploadFile = File(...)):
     """
-    Accepts an uploaded image, runs it through the RCAN model,
-    and returns the super-resolved high-resolution image.
+    Accepts LR image (PNG/JPG).
+    Returns JSON with stats, and base64 previews.
     """
     if MODEL is None:
         raise HTTPException(status_code=503, detail="Model is not loaded.")
-        
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File provided is not an image.")
 
+    lr_path = os.path.join(TEMP_DIR, f"upload_{lr_file.filename}")
+    
     try:
-        # Read uploaded file
-        image_bytes = await file.read()
+        with open(lr_path, "wb") as buffer:
+            shutil.copyfileobj(lr_file.file, buffer)
+                
+        result = run_inference_pipeline(MODEL, DEVICE, lr_path)
+        return JSONResponse(content=result)
         
-        # Run inference
-        hr_image_io = run_inference(MODEL, image_bytes, DEVICE)
-        
-        # Return HR image as streaming response
-        return StreamingResponse(hr_image_io, media_type="image/png")
-        
+    except ValueError as ve:
+        print(f"ValueError in /predict: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
+    finally:
+        # Cleanup uploaded files
+        if os.path.exists(lr_path):
+            os.remove(lr_path)
 
-# Mount the frontend directory to serve static files
+@app.get("/download_image")
+async def download_image(job_id: str):
+    """Download the generated SR PNG."""
+    file_path = os.path.join(TEMP_DIR, f"{job_id}.png")
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="SR output not found or expired.")
+    
+    return FileResponse(
+        path=file_path, 
+        filename=f"SR_output_{job_id[:8]}.png", 
+        media_type="image/png"
+    )
+
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.exists(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")

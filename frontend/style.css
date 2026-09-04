@@ -1,0 +1,288 @@
+:root {
+    --bg-color: #0b0f19;
+    --panel-bg: #111827;
+    --border-color: #1f2937;
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+    --accent-color: #0ea5e9;
+    --accent-hover: #38bdf8;
+    --danger: #ef4444;
+    --success: #10b981;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* Typography */
+h1 { font-size: 1.25rem; font-weight: 600; }
+h2 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;}
+.subtitle { font-size: 0.875rem; color: var(--text-secondary); }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* Header */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background-color: var(--panel-bg);
+    border-bottom: 1px solid var(--border-color);
+    height: 60px;
+}
+.header-right { display: flex; gap: 0.75rem; }
+.model-badge {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent-hover);
+}
+
+/* Layout */
+.main-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    height: calc(100vh - 60px);
+}
+.sidebar-left {
+    background-color: var(--bg-color);
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.panel {
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 1rem;
+}
+.hidden { display: none !important; }
+
+/* Upload Zones */
+.upload-zone {
+    border: 1px dashed #374151;
+    border-radius: 6px;
+    padding: 2.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 1rem;
+    position: relative;
+    background-color: rgba(17, 24, 39, 0.5);
+}
+.upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent-color);
+    background-color: rgba(14, 165, 233, 0.05);
+}
+.upload-icon { font-size: 1.5rem; display: block; margin-bottom: 0.5rem; color: var(--text-secondary); }
+.upload-zone p { font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem; }
+.upload-zone small { font-size: 0.75rem; color: var(--text-secondary); }
+.upload-zone input {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    opacity: 0; cursor: pointer;
+}
+.upload-zone.has-file { border-color: var(--success); background-color: rgba(16, 185, 129, 0.05); }
+
+/* Buttons */
+.primary-btn, .secondary-btn {
+    background-color: var(--accent-color);
+    color: #fff; border: none; padding: 0.5rem 1rem;
+    border-radius: 4px; font-size: 0.875rem; font-weight: 500;
+    cursor: pointer; width: 100%; transition: background-color 0.2s;
+}
+.primary-btn:hover { background-color: var(--accent-hover); }
+.primary-btn:disabled { background-color: #374151; color: #6b7280; cursor: not-allowed; }
+.secondary-btn { background-color: #374151; }
+.secondary-btn:hover { background-color: #4b5563; }
+
+/* Processing & Tables */
+.status-steps { display: flex; flex-direction: column; gap: 0.75rem; }
+.step { font-size: 0.875rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem; }
+.indicator { width: 10px; height: 10px; border-radius: 50%; background-color: #374151; }
+.step.active .indicator { background-color: var(--accent-color); box-shadow: 0 0 8px var(--accent-color); }
+.step.done .indicator { background-color: var(--success); }
+.step.active { color: var(--text-primary); }
+
+.metadata-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-bottom: 1rem; }
+.metadata-table td { padding: 0.4rem 0; border-bottom: 1px solid var(--border-color); }
+.metadata-table td:first-child { color: var(--text-secondary); padding-right: 1rem;}
+.metadata-table td:last-child { text-align: right; font-family: 'JetBrains Mono', monospace; word-break: break-all;}
+
+/* ----------------------------------------------------
+   ROBUST VIEWER ARCHITECTURE
+------------------------------------------------------- */
+.main-viewer {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background-color: #000;
+    overflow: hidden;
+}
+.main-viewer.fullscreen {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: 9999;
+}
+
+.stage-message {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary); font-size: 0.875rem;
+}
+#viewer-container { display: flex; flex-direction: column; height: 100%; }
+
+/* Toolbar */
+.toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.5rem 1rem; background-color: rgba(17, 24, 39, 0.8);
+    border-bottom: 1px solid var(--border-color); z-index: 10;
+}
+.mode-toggles { display: flex; background: rgba(0,0,0,0.4); border-radius: 4px; overflow: hidden;}
+.mode-btn {
+    background: transparent; border: none; color: var(--text-secondary);
+    padding: 0.4rem 0.75rem; font-size: 0.75rem; font-weight: 500; cursor: pointer;
+    transition: all 0.2s;
+}
+.mode-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+.mode-btn.active { background: var(--accent-color); color: #fff; }
+
+.active-indicator {
+    font-size: 0.75rem; font-weight: 600; color: var(--accent-hover);
+    letter-spacing: 0.05em; background: rgba(14, 165, 233, 0.1);
+    padding: 0.25rem 0.75rem; border-radius: 12px;
+}
+
+.sync-toggle {
+    display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem;
+    font-weight: 600; cursor: pointer; color: var(--text-primary);
+}
+.sync-toggle input { accent-color: var(--accent-color); cursor: pointer;}
+
+/* Bottom Controls */
+.bottom-controls {
+    display: flex; justify-content: center; align-items: center; gap: 2rem;
+    padding: 0.5rem 1rem; background-color: rgba(17, 24, 39, 0.8);
+    border-top: 1px solid var(--border-color); z-index: 10;
+}
+.control-group { display: flex; align-items: center; gap: 0.25rem; background: rgba(0,0,0,0.4); padding: 0.25rem; border-radius: 4px;}
+.ctrl-btn {
+    background: transparent; border: none; color: var(--text-secondary);
+    width: 28px; height: 28px; border-radius: 4px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; font-weight: bold; transition: all 0.2s;
+}
+.ctrl-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.ctrl-btn.text-btn { width: auto; padding: 0 0.75rem; font-size: 0.75rem; font-weight: 600; }
+.zoom-level { font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; width: 45px; text-align: center; color: #fff; }
+
+/* Workspace & Viewers */
+.workspace {
+    flex: 1;
+    position: relative;
+    display: flex;
+    overflow: hidden;
+    background-image: 
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+.viewer-pane {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    cursor: grab;
+    border: 2px solid transparent;
+}
+.viewer-pane:active { cursor: grabbing; }
+
+/* Active visual indicator */
+.workspace.sync-off .viewer-pane.is-active {
+    border-color: rgba(14, 165, 233, 0.5); /* subtle accent border when sync is off and active */
+}
+
+.viewer-label {
+    position: absolute; bottom: 1rem; left: 1rem; z-index: 5; pointer-events: none;
+    background-color: rgba(0, 0, 0, 0.6); color: #fff; font-size: 0.75rem; font-weight: 600;
+    padding: 0.25rem 0.75rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2);
+}
+
+.canvas-container {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    transform-origin: 0 0;
+}
+.viewer-img {
+    position: absolute;
+    top: 0; left: 0;
+    transform-origin: 0 0;
+    /* We handle dimensions precisely via JS transform */
+}
+
+/* ----------------------------------------------------
+   MODES
+------------------------------------------------------- */
+/* SIDE BY SIDE */
+.mode-side .viewer-pane {
+    position: relative;
+    border-right: 1px solid var(--border-color);
+}
+.mode-side .viewer-pane:last-child { border-right: none; }
+
+/* SPLIT VIEW */
+.mode-split .viewer-pane {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+}
+.mode-split #pane-sr {
+    /* clip-path is applied dynamically via JS */
+    pointer-events: none; /* Let Original handle all pointer events underneath */
+}
+.mode-split #pane-original { z-index: 1; }
+.mode-split #pane-sr { z-index: 2; }
+
+.split-divider {
+    position: absolute; top: 0; left: 50%; width: 2px; height: 100%;
+    background-color: var(--accent-color); z-index: 10;
+    transform: translateX(-50%); cursor: ew-resize;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+.split-handle {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 32px; height: 32px; background-color: var(--panel-bg);
+    border-radius: 50%; border: 2px solid var(--accent-color);
+    display: flex; align-items: center; justify-content: center;
+}
+.split-handle::after {
+    content: "↔"; color: var(--accent-color); font-size: 1rem; font-weight: bold;
+}
+
+/* OVERLAY */
+.mode-overlay .viewer-pane {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+}
+.mode-overlay #pane-original { z-index: 1; }
+.mode-overlay #pane-sr { z-index: 2; pointer-events: none; opacity: 0.5;} /* dynamic via slider */
+
+.overlay-controls {
+    position: absolute; top: 1rem; right: 1rem; z-index: 10;
+    background: rgba(17, 24, 39, 0.8); padding: 0.5rem 1rem;
+    border-radius: 4px; border: 1px solid var(--border-color);
+    display: flex; align-items: center; gap: 0.5rem; color: #fff; font-size: 0.75rem; font-weight: 500;
+}
+.overlay-controls input[type="range"] {
+    accent-color: var(--accent-color); cursor: pointer; width: 100px;
+}

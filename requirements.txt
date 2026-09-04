@@ -1,6 +1,7 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 fastapi
 uvicorn
 python-multipart
 Pillow
 numpy
-# Note: torch should be installed via specific instructions depending on platform (cpu vs gpu)
+torch
