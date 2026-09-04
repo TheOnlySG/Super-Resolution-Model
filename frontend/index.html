@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCAN Satellite Image Super-Resolution</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #f8fafc;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --panel-bg: #1e293b;
+            --border: #334155;
+            --error: #ef4444;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--panel-bg);
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            background: linear-gradient(90deg, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .controls {
+            background-color: var(--panel-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .btn {
+            background-color: var(--panel-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border);
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            background-color: var(--border);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+
+        .btn-primary:disabled {
+            background-color: var(--border);
+            border-color: var(--border);
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .status {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+        
+        .status.error {
+            color: var(--error);
+        }
+
+        .comparison-container {
+            display: flex;
+            gap: 2rem;
+            width: 100%;
+        }
+
+        .image-panel {
+            flex: 1;
+            background-color: var(--panel-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 400px;
+        }
+
+        .panel-header {
+            padding: 1rem;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .panel-title {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .image-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: repeating-conic-gradient(#1e293b 0% 25%, transparent 0% 50%) 50% / 20px 20px;
+            background-color: #0f172a;
+            position: relative;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            max-height: 500px;
+            object-fit: contain;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+            image-rendering: pixelated; /* good for showing LR pixels */
+        }
+        
+        #hr-image {
+            image-rendering: auto; /* smooth for HR */
+        }
+
+        .placeholder-text {
+            color: #64748b;
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        /* Spinner */
+        .spinner {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+            position: absolute;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .comparison-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>RCAN Satellite Image Super-Resolution</h1>
+    </header>
+
+    <main>
+        <div class="controls">
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <div class="file-input-wrapper">
+                    <button class="btn">Select LR Image</button>
+                    <input type="file" id="file-input" accept="image/*">
+                </div>
+                <span id="file-name" class="status">No file selected</span>
+            </div>
+            
+            <button id="generate-btn" class="btn btn-primary" disabled>
+                Generate HR (4x)
+            </button>
+        </div>
+
+        <div class="comparison-container">
+            <!-- Left Panel: LR Input -->
+            <div class="image-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">Low Resolution (LR)</h2>
+                </div>
+                <div class="image-container">
+                    <div id="lr-placeholder" class="placeholder-text">Upload an image to see it here</div>
+                    <img id="lr-image" style="display: none;" alt="Low Resolution Input">
+                </div>
+            </div>
+
+            <!-- Right Panel: HR Output -->
+            <div class="image-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">High Resolution (HR)</h2>
+                    <a id="download-btn" class="btn" style="display: none;" download="super_resolved.png">
+                        Download
+                    </a>
+                </div>
+                <div class="image-container">
+                    <div id="hr-placeholder" class="placeholder-text">Generated image will appear here</div>
+                    <div id="spinner" class="spinner"></div>
+                    <img id="hr-image" style="display: none;" alt="High Resolution Output">
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('file-input');
+            const fileName = document.getElementById('file-name');
+            const generateBtn = document.getElementById('generate-btn');
+            
+            const lrPlaceholder = document.getElementById('lr-placeholder');
+            const lrImage = document.getElementById('lr-image');
+            
+            const hrPlaceholder = document.getElementById('hr-placeholder');
+            const hrImage = document.getElementById('hr-image');
+            const spinner = document.getElementById('spinner');
+            const downloadBtn = document.getElementById('download-btn');
+            
+            let selectedFile = null;
+
+            // Handle file selection
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    selectedFile = e.target.files[0];
+                    fileName.textContent = selectedFile.name;
+                    generateBtn.disabled = false;
+                    
+                    // Reset HR side
+                    hrImage.style.display = 'none';
+                    hrImage.src = '';
+                    downloadBtn.style.display = 'none';
+                    hrPlaceholder.style.display = 'block';
+                    hrPlaceholder.textContent = 'Generated image will appear here';
+                    
+                    // Display LR image
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        lrImage.src = event.target.result;
+                        lrImage.style.display = 'block';
+                        lrPlaceholder.style.display = 'none';
+                    };
+                    reader.readAsDataURL(selectedFile);
+                }
+            });
+
+            // Handle inference request
+            generateBtn.addEventListener('click', async () => {
+                if (!selectedFile) return;
+                
+                // Update UI state
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Processing...';
+                hrPlaceholder.style.display = 'none';
+                hrImage.style.display = 'none';
+                spinner.style.display = 'block';
+                downloadBtn.style.display = 'none';
+                
+                // Prepare form data
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                
+                try {
+                    // Send to FastAPI (assuming it runs on same host/port if served as static files)
+                    // If running separate, you'd need the full URL e.g., 'http://localhost:8000/predict'
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        throw new Error(`Server error: ${response.status} - ${errText}`);
+                    }
+                    
+                    // Get image blob
+                    const blob = await response.blob();
+                    const objectUrl = URL.createObjectURL(blob);
+                    
+                    // Display image
+                    hrImage.src = objectUrl;
+                    hrImage.style.display = 'block';
+                    
+                    // Setup download button
+                    downloadBtn.href = objectUrl;
+                    downloadBtn.style.display = 'inline-flex';
+                    
+                } catch (error) {
+                    console.error('Inference failed:', error);
+                    hrPlaceholder.style.display = 'block';
+                    hrPlaceholder.innerHTML = `<span style="color:#ef4444">Error: ${error.message}</span>`;
+                } finally {
+                    // Restore UI state
+                    spinner.style.display = 'none';
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Generate HR (4x)';
+                }
+            });
+            
+            // Check health on load
+            fetch('/health')
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.model_loaded) {
+                        fileName.textContent = 'Warning: Model not loaded on server!';
+                        fileName.classList.add('error');
+                    }
+                })
+                .catch(err => {
+                    console.warn("Could not reach /health endpoint", err);
+                });
+        });
+    </script>
+</body>
+</html>
