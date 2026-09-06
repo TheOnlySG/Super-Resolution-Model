@@ -85,7 +85,7 @@ def run_inference_pipeline(model, device, lr_path, normalization=DEFAULT_NORMALI
     sr_pil = Image.fromarray(sr_rgb)
     sr_pil.save(sr_out_path, format="PNG")
     
-    return {
+    result = {
         "status": "success",
         "job_id": job_id,
         "metadata": {
@@ -110,3 +110,5 @@ def run_inference_pipeline(model, device, lr_path, normalization=DEFAULT_NORMALI
             "sr_rgb": sr_preview
         }
     }
+    # Return the result dict AND the SR PIL image for downstream use (e.g. segmentation)
+    return result, sr_pil

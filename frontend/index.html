@@ -142,6 +142,60 @@
             </main>
             
         </div>
+
+        <!-- LAND COVER ANALYSIS (populated after segmentation inference) -->
+        <section id="segmentation-section" class="seg-section hidden">
+            <div class="seg-header">
+                <h2 class="seg-title">Land Cover Analysis</h2>
+                <span class="seg-subtitle">SegFormer-B2 · LoveDA Classes · Inference on SR Output</span>
+            </div>
+
+            <!-- Loading state -->
+            <div id="seg-loading" class="seg-loading hidden">
+                <div class="seg-spinner"></div>
+                <span>Running segmentation analysis...</span>
+            </div>
+
+            <!-- Error state -->
+            <div id="seg-error" class="seg-error hidden">
+                <span class="seg-error-icon">⚠</span>
+                <span id="seg-error-msg">Segmentation unavailable.</span>
+            </div>
+
+            <!-- Results -->
+            <div id="seg-results" class="seg-results hidden">
+                <!-- Visualization images -->
+                <div class="seg-images">
+                    <div class="seg-image-card">
+                        <div class="seg-image-label">Segmentation Mask</div>
+                        <img id="seg-mask-img" alt="Segmentation Mask">
+                    </div>
+                    <div class="seg-image-card">
+                        <div class="seg-image-label">Overlay on SR Image</div>
+                        <img id="seg-overlay-img" alt="Segmentation Overlay">
+                    </div>
+                </div>
+
+                <!-- Legend + Stats row -->
+                <div class="seg-info-row">
+                    <!-- Legend -->
+                    <div class="seg-legend-card">
+                        <h3>Legend</h3>
+                        <div id="seg-legend" class="seg-legend">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Area distribution -->
+                    <div class="seg-stats-card">
+                        <h3>Area Distribution</h3>
+                        <div id="seg-stats" class="seg-stats">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 
     <script src="app.js"></script>

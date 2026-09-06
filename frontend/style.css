@@ -16,8 +16,8 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-color);
     color: var(--text-primary);
-    overflow: hidden;
-    height: 100vh;
+    overflow-x: hidden;
+    min-height: 100vh;
 }
 
 /* Typography */
@@ -285,4 +285,190 @@ h2 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; col
 }
 .overlay-controls input[type="range"] {
     accent-color: var(--accent-color); cursor: pointer; width: 100px;
+}
+
+/* ============================================================
+   LAND COVER ANALYSIS / SEGMENTATION SECTION
+   ============================================================ */
+
+.seg-section {
+    background-color: var(--bg-color);
+    padding: 2rem 2.5rem 3rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.seg-header {
+    margin-bottom: 1.5rem;
+}
+.seg-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: none;
+    letter-spacing: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0.25rem;
+}
+.seg-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Loading */
+.seg-loading {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+.seg-spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: seg-spin 0.8s linear infinite;
+}
+@keyframes seg-spin { to { transform: rotate(360deg); } }
+
+/* Error */
+.seg-error {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 6px;
+    color: var(--danger);
+    font-size: 0.875rem;
+}
+.seg-error-icon { font-size: 1.25rem; }
+
+/* Images grid */
+.seg-images {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.seg-image-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.seg-image-label {
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+.seg-image-card img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* Info row: legend + stats */
+.seg-info-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.seg-legend-card,
+.seg-stats-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+.seg-legend-card h3,
+.seg-stats-card h3 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Legend items */
+.seg-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.seg-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+}
+.seg-legend-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.15);
+    flex-shrink: 0;
+}
+.seg-legend-label {
+    color: var(--text-primary);
+}
+
+/* Stats bars */
+.seg-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.seg-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.seg-stat-label {
+    width: 90px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+.seg-stat-bar-bg {
+    flex: 1;
+    height: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.seg-stat-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+.seg-stat-value {
+    width: 50px;
+    text-align: right;
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-primary);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .seg-images,
+    .seg-info-row {
+        grid-template-columns: 1fr;
+    }
+    .seg-section {
+        padding: 1.5rem 1rem 2rem;
+    }
 }

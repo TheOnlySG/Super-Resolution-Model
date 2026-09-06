@@ -183,6 +183,64 @@ function populateUI(data) {
     document.getElementById('download-image-btn').onclick = () => {
         window.location.href = "/download_image?job_id=" + currentJobId;
     };
+
+    // --- Segmentation ---
+    populateSegmentation(data.segmentation);
+}
+
+function populateSegmentation(seg) {
+    const section = document.getElementById('segmentation-section');
+    const loading = document.getElementById('seg-loading');
+    const error = document.getElementById('seg-error');
+    const results = document.getElementById('seg-results');
+
+    // Always show the section after SR completes
+    section.classList.remove('hidden');
+    loading.classList.add('hidden');
+    error.classList.add('hidden');
+    results.classList.add('hidden');
+
+    if (!seg || !seg.available) {
+        // Show error state
+        error.classList.remove('hidden');
+        document.getElementById('seg-error-msg').textContent = 
+            (seg && seg.error) ? seg.error : 'Segmentation unavailable.';
+        return;
+    }
+
+    // Show results
+    results.classList.remove('hidden');
+
+    // Set images
+    document.getElementById('seg-mask-img').src = "data:image/png;base64," + seg.mask;
+    document.getElementById('seg-overlay-img').src = "data:image/png;base64," + seg.overlay;
+
+    // Build legend
+    const legendEl = document.getElementById('seg-legend');
+    legendEl.innerHTML = seg.classes.map(c => `
+        <div class="seg-legend-item">
+            <div class="seg-legend-swatch" style="background-color: ${c.color};"></div>
+            <span class="seg-legend-label">${c.label}</span>
+        </div>
+    `).join('');
+
+    // Build stats with percentage bars
+    const statsEl = document.getElementById('seg-stats');
+    const maxPct = Math.max(...seg.classes.map(c => c.percentage), 1);
+    statsEl.innerHTML = seg.classes.map(c => `
+        <div class="seg-stat-row">
+            <span class="seg-stat-label">${c.label}</span>
+            <div class="seg-stat-bar-bg">
+                <div class="seg-stat-bar-fill" style="width: ${(c.percentage / maxPct) * 100}%; background-color: ${c.color};"></div>
+            </div>
+            <span class="seg-stat-value">${c.percentage.toFixed(1)}%</span>
+        </div>
+    `).join('');
+
+    // Scroll to segmentation section smoothly
+    setTimeout(() => {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
 }
 
 // -----------------------------------------

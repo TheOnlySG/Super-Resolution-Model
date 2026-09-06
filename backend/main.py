@@ -20,27 +20,40 @@ app.add_middleware(
 )
 
 MODEL = None
+SEG_MODEL = None
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(os.path.dirname(__file__), "..", "model", "rcan_improved.pth"))
 
 @app.on_event("startup")
 async def startup_event():
-    global MODEL
-    print(f"Starting up... Loading model from {MODEL_PATH} onto {DEVICE}")
+    global MODEL, SEG_MODEL
+    
+    # --- Load SR model ---
+    print(f"Starting up... Loading SR model from {MODEL_PATH} onto {DEVICE}")
     try:
         if not os.path.exists(MODEL_PATH):
-            print(f"WARNING: Model file not found at {MODEL_PATH}")
-            return
-        MODEL, _, _ = load_model(MODEL_PATH, DEVICE)
-        print("Model loaded successfully.")
+            print(f"WARNING: SR model file not found at {MODEL_PATH}")
+        else:
+            MODEL, _, _ = load_model(MODEL_PATH, DEVICE)
+            print("SR model loaded successfully.")
     except Exception as e:
-        print(f"Error loading model: {e}")
+        print(f"Error loading SR model: {e}")
+
+    # --- Load Segmentation model (independent — failure does not block SR) ---
+    try:
+        from model.segmentation.seg_model import load_segmentation_model
+        SEG_MODEL, _ = load_segmentation_model(DEVICE)
+        print("Segmentation model loaded successfully.")
+    except Exception as e:
+        print(f"WARNING: Segmentation model failed to load: {e}")
+        SEG_MODEL = None
 
 @app.get("/health")
 async def health_check():
     return JSONResponse({
         "status": "ok",
-        "model_loaded": MODEL is not None,
+        "sr_model_loaded": MODEL is not None,
+        "seg_model_loaded": SEG_MODEL is not None,
         "device": DEVICE
     })
 
@@ -48,7 +61,7 @@ async def health_check():
 async def predict(lr_file: UploadFile = File(...)):
     """
     Accepts LR image (PNG/JPG).
-    Returns JSON with stats, and base64 previews.
+    Returns JSON with stats, base64 previews, and segmentation results.
     """
     if MODEL is None:
         raise HTTPException(status_code=503, detail="Model is not loaded.")
@@ -59,7 +72,27 @@ async def predict(lr_file: UploadFile = File(...)):
         with open(lr_path, "wb") as buffer:
             shutil.copyfileobj(lr_file.file, buffer)
                 
-        result = run_inference_pipeline(MODEL, DEVICE, lr_path)
+        result, sr_pil = run_inference_pipeline(MODEL, DEVICE, lr_path)
+        
+        # --- Run segmentation on SR output ---
+        if SEG_MODEL is not None:
+            try:
+                from model.segmentation.inference import run_segmentation
+                seg_result = run_segmentation(SEG_MODEL, DEVICE, sr_pil)
+                result["segmentation"] = seg_result
+            except Exception as seg_e:
+                import traceback
+                traceback.print_exc()
+                result["segmentation"] = {
+                    "available": False,
+                    "error": f"Segmentation failed: {str(seg_e)}"
+                }
+        else:
+            result["segmentation"] = {
+                "available": False,
+                "error": "Segmentation model not loaded."
+            }
+        
         return JSONResponse(content=result)
         
     except ValueError as ve:
