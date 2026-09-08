@@ -8,3 +8,5 @@ torch
 torchvision
 transformers
 rasterio
+scikit-image
+matplotlib

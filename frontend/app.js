@@ -216,6 +216,10 @@ function populateUI(data) {
     document.getElementById('download-image-btn').onclick = () => {
         window.location.href = "/download_image?job_id=" + currentJobId;
     };
+    
+    document.getElementById('validate-btn').onclick = () => {
+        window.location.href = "/validation.html?job_id=" + currentJobId;
+    };
 
     // --- Segmentation ---
     populateSegmentation(data.segmentation);

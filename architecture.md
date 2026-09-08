@@ -103,11 +103,14 @@ SIH--26142-Satellite-imagery-Super-Scaling/
 ├── 📁 backend/                      # FastAPI application
 │   ├── 📄 main.py                  # App entry point, routes, startup
 │   ├── 📄 inference.py             # SR inference pipeline + channel adapter
+│   ├── 📄 validation.py            # Quality assessment metrics logic
 │   └── 📄 model.py                 # RCAN architecture definition (PyTorch)
 │
 ├── 📁 frontend/                     # Vanilla JS/HTML/CSS SPA
 │   ├── 📄 index.html               # Main HTML structure
 │   ├── 📄 app.js                   # Application logic, viewer, API calls
+│   ├── 📄 validation.html          # Quality Assessment UI
+│   ├── 📄 validation.js            # Validation pipeline viewer logic
 │   └── 📄 style.css                # Design system, layout, animations
 │
 ├── 📁 model/                        # Trained model weights
@@ -218,6 +221,7 @@ graph LR
         direction TB
         H["GET /health"]
         P["POST /predict"]
+        V["POST /validate"]
         D["GET /download_image"]
         S["GET /* (static)"]
     end
@@ -227,13 +231,16 @@ graph LR
     P -->|"400"| P_ERR1["{ detail: 'Image Error: ...' }"]
     P -->|"503"| P_ERR2["{ detail: 'Model not loaded' }"]
     P -->|"500"| P_ERR3["{ detail: 'Inference error: ...' }"]
-    D -->|"200"| D_RES["FileResponse (PNG)"]
+    V -->|"200"| V_RES["{ status, validation, maps, metrics }"]
+    V -->|"400"| V_ERR["{ detail: 'Validation error: ...' }"]
+    D -->|"200"| D_RES["FileResponse (dynamic format)"]
     D -->|"404"| D_ERR["{ detail: 'SR output not found' }"]
     S -->|"200"| S_RES["Static HTML/CSS/JS"]
 
     style API fill:#111827,stroke:#0ea5e9,color:#f3f4f6
     style H fill:#10b981,stroke:#059669,color:#fff
     style P fill:#0ea5e9,stroke:#0284c7,color:#fff
+    style V fill:#0ea5e9,stroke:#0284c7,color:#fff
     style D fill:#f59e0b,stroke:#d97706,color:#fff
     style S fill:#8b5cf6,stroke:#7c3aed,color:#fff
 ```
@@ -242,7 +249,8 @@ graph LR
 |--------|------|---------|------|------|
 | `GET` | `/health` | Health check — reports model load status and device | None | — |
 | `POST` | `/predict` | Upload LR image → SR + Segmentation pipeline | None | `multipart/form-data` (`lr_file`) |
-| `GET` | `/download_image?job_id=<uuid>` | Download full-resolution SR PNG | None | — |
+| `POST` | `/validate` | Upload HR image → Metrics & Maps generation | None | `multipart/form-data` (`hr_file`, `job_id`) |
+| `GET` | `/download_image?job_id=<uuid>` | Download full-resolution SR Output | None | — |
 | `GET` | `/*` | Static file serving (frontend SPA) | None | — |
 
 ### 4.2 Request / Response Contracts
@@ -569,17 +577,20 @@ flowchart TD
     
     I --> J["Output tensor<br/>(1, 4, 4H, 4W)"]
     J --> K["Squeeze + Clamp [0, 1]"]
+    K --> SAVE_NPY["Save 4-band float32<br/>temp_outputs/{job_id}_sr_tensor.npy<br/>(For Validation)"]
     K --> L["4→3 Channel Extraction<br/>Take channels [:3]"]
     L --> M["Transpose to<br/>(4H, 4W, 3)"]
     M --> N["Denormalize<br/>× 255 → uint8"]
     
-    N --> O["Save as PNG<br/>temp_outputs/{job_id}.png"]
+    N --> O["Save output file<br/>(e.g., .tif, .jp2, .png)"]
     N --> P["Generate SR preview<br/>(base64 PNG)"]
     N --> Q["Return PIL Image<br/>→ Segmentation Pipeline"]
+    SAVE_NPY --> O
     
     style A fill:#0ea5e9,stroke:#0284c7,color:#fff
     style I fill:#7c3aed,stroke:#6d28d9,color:#fff
     style Q fill:#10b981,stroke:#059669,color:#fff
+    style SAVE_NPY fill:#f59e0b,stroke:#d97706,color:#fff
 ```
 
 > [!NOTE]
@@ -621,7 +632,33 @@ flowchart TD
     style Q fill:#f59e0b,stroke:#d97706,color:#fff
 ```
 
-### 6.3 End-to-End Data Flow
+### 6.3 Validation Pipeline
+
+```mermaid
+flowchart TD
+    A["User uploads HR GeoTIFF<br/>(4-band)"] --> B["Validate Alignment<br/>(Compare with SR meta)"]
+    B --> C["Normalize HR<br/>÷ 3000.0"]
+    C --> D["Load SR Tensor<br/>temp_outputs/{job_id}_sr_tensor.npy"]
+    
+    D --> E["Compute Reconstruction Error<br/>(Mean Absolute Error B2/B3/B4/B8)"]
+    D --> F["Compute Confidence Map<br/>(Percentile Normalized Error)"]
+    D --> G["Compute SAM Map<br/>(Spectral Angle Mapper)"]
+    D --> H["Compute NDVI Error Map"]
+    D --> I["Compute PSNR, SSIM, RMSE"]
+    
+    E --> J["Colorize & Base64 Encode Maps<br/>(inferno, magma, Blues)"]
+    F --> J
+    G --> J
+    H --> J
+    
+    J --> K["Return JSON Response<br/>{ metrics, maps }"]
+    
+    style A fill:#0ea5e9,stroke:#0284c7,color:#fff
+    style D fill:#7c3aed,stroke:#6d28d9,color:#fff
+    style K fill:#10b981,stroke:#059669,color:#fff
+```
+
+### 6.4 End-to-End Data Flow
 
 ```mermaid
 sequenceDiagram

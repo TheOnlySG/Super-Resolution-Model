@@ -170,6 +170,40 @@ async def download_image(job_id: str):
         media_type=mtype
     )
 
+@app.post("/validate")
+async def validate(hr_file: UploadFile = File(...), job_id: str = Form(...)):
+    """Run validation pipeline comparing SR tensor and HR reference."""
+    sr_tensor_path = os.path.join(TEMP_DIR, f"{job_id}_sr_tensor.npy")
+    if not os.path.exists(sr_tensor_path):
+        raise HTTPException(status_code=404, detail="SR tensor not found or expired.")
+        
+    sr_meta_path = os.path.join(TEMP_DIR, f"{job_id}_meta.json")
+    sr_meta = {}
+    if os.path.exists(sr_meta_path):
+        import json
+        with open(sr_meta_path, "r") as f:
+            sr_meta = json.load(f)
+            
+    hr_path = os.path.join(TEMP_DIR, f"hr_upload_{job_id}.tif")
+    try:
+        with open(hr_path, "wb") as buffer:
+            import shutil
+            shutil.copyfileobj(hr_file.file, buffer)
+            
+        from backend.validation import run_validation
+        result = run_validation(sr_tensor_path, hr_path, sr_meta)
+        if result.get("status") == "error":
+            raise HTTPException(status_code=400, detail=" ".join(result["errors"]))
+            
+        return JSONResponse(content=result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Validation error: {str(e)}")
+    finally:
+        if os.path.exists(hr_path):
+            os.remove(hr_path)
+
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.exists(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")

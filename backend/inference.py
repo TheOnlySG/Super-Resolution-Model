@@ -72,6 +72,12 @@ def run_inference_pipeline(model, device, lr_path, normalization=DEFAULT_NORMALI
     # 4. 4 -> 3 Channel Extraction
     # Model returns (1, 4, H_out, W_out). We take the first 3 channels.
     sr_norm = output_tensor.squeeze(0).cpu().clamp(0, 1).numpy()
+    
+    job_id = str(uuid.uuid4())
+    
+    # Save the full 4-band normalized tensor for downstream validation
+    np.save(os.path.join(TEMP_DIR, f"{job_id}_sr_tensor.npy"), sr_norm)
+    
     sr_rgb_norm = sr_norm[:3, :, :] # (3, H_out, W_out)
     
     # Convert back to (H_out, W_out, 3) uint8
@@ -81,7 +87,6 @@ def run_inference_pipeline(model, device, lr_path, normalization=DEFAULT_NORMALI
     sr_preview = array_to_base64_png(sr_rgb)
     
     # 5. Save Output
-    job_id = str(uuid.uuid4())
     ext = os.path.splitext(lr_path)[1].lower()
     if not ext: ext = ".png"
     sr_out_path = os.path.join(TEMP_DIR, f"{job_id}{ext}")
@@ -143,7 +148,13 @@ def run_inference_pipeline(model, device, lr_path, normalization=DEFAULT_NORMALI
             "lr_rgb": lr_preview,
             "sr_rgb": sr_preview
         },
-        "geo_metadata": geo_meta
+        "geo_metadata": geo_meta,
+        "normalization": normalization
     }
+    
+    import json
+    with open(os.path.join(TEMP_DIR, f"{job_id}_meta.json"), "w") as f:
+        json.dump(result["metadata"], f)
+        
     # Return the result dict AND the SR PIL image for downstream use (e.g. segmentation)
     return result, sr_pil

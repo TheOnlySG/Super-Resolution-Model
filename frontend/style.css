@@ -472,3 +472,121 @@ h2 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; col
         padding: 1.5rem 1rem 2rem;
     }
 }
+
+/* ========================================================= */
+/* VALIDATION PAGE SPECIFIC STYLES                           */
+/* ========================================================= */
+
+.val-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    height: calc(100vh - 60px);
+    overflow: hidden;
+}
+
+.val-viewer-area {
+    position: relative;
+    background-color: var(--bg-color);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-color);
+}
+
+.val-tabs {
+    display: flex;
+    background-color: var(--panel-bg);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 1rem;
+    height: 48px;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.val-tab {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.val-tab:hover {
+    color: var(--text-primary);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.val-tab.active {
+    background-color: rgba(14, 165, 233, 0.1);
+    color: var(--accent-color);
+    border-color: rgba(14, 165, 233, 0.3);
+}
+
+.val-canvas-pane {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+    cursor: grab;
+}
+
+.val-canvas-pane:active {
+    cursor: grabbing;
+}
+
+.val-sidebar {
+    background-color: var(--bg-color);
+    border-left: 1px solid var(--border-color);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    gap: 1rem;
+}
+
+.val-metric-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.val-metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dashed var(--border-color);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.val-metric-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.val-metric-value {
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.val-interpretation {
+    background-color: rgba(255, 255, 255, 0.02);
+    border-radius: 6px;
+    padding: 1rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.val-interpretation strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}

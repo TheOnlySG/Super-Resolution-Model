@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validation & Quality Assessment</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div>
+                <h1>Validation & Quality Assessment</h1>
+            </div>
+            <div class="header-right">
+                <a href="/" class="secondary-btn" style="text-decoration: none; display: flex; align-items: center;">← Back to SR</a>
+            </div>
+        </header>
+
+        <!-- Main Layout -->
+        <div class="val-layout">
+            <!-- Left: Viewer -->
+            <div class="val-viewer-area">
+                <div class="val-tabs" id="val-tabs">
+                    <button class="val-tab active" data-tab="confidence">Confidence</button>
+                    <button class="val-tab" data-tab="reconstruction_error">Recon Error</button>
+                    <button class="val-tab" data-tab="sam_error">SAM Error</button>
+                    <button class="val-tab" data-tab="ndvi_error">NDVI Error</button>
+                </div>
+                
+                <div class="val-canvas-pane" id="val-pane">
+                    <div id="stage-empty" class="stage-message">
+                        Upload a 4-band HR GeoTIFF to validate the SR output.
+                    </div>
+                    <div id="val-container" class="canvas-container hidden">
+                        <img id="val-img" class="viewer-img" alt="Validation Map">
+                    </div>
+                </div>
+                
+                <div class="viewer-controls" id="val-controls" style="display: none;">
+                    <button class="ctrl-btn" id="ctrl-zoom-out" title="Zoom Out">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                    </button>
+                    <span class="mono" id="zoom-level" style="margin: 0 0.5rem;">100%</span>
+                    <button class="ctrl-btn" id="ctrl-zoom-in" title="Zoom In">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                    </button>
+                    <div class="ctrl-divider"></div>
+                    <button class="ctrl-btn" id="ctrl-fit" title="Fit to Screen">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v6h6M20 10V4h-6M10 20H4v-6M14 4h6v6"></path></svg>
+                    </button>
+                    <button class="ctrl-btn" id="ctrl-1to1" title="1:1 Native Resolution">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: Sidebar -->
+            <aside class="val-sidebar">
+                <!-- Upload Panel -->
+                <div class="panel" id="upload-panel">
+                    <h2>Upload Ground Truth</h2>
+                    <div class="upload-zone" id="hr-drop-zone">
+                        <span class="upload-icon">⇪</span>
+                        <p>Drop HR Reference Here</p>
+                        <small>4-band .tif / .tiff only</small>
+                        <input type="file" id="hr-file-input" accept=".tif,.tiff">
+                    </div>
+                    <div id="upload-error" class="error-text hidden"></div>
+                    <div class="action-bar">
+                        <button id="validate-start-btn" class="primary-btn" disabled>Run Validation</button>
+                    </div>
+                </div>
+
+                <!-- Processing -->
+                <div class="panel hidden" id="processing-panel">
+                    <h2>Processing</h2>
+                    <div class="status-steps">
+                        <div class="step" id="step-upload"><span class="indicator"></span> Uploading & Aligning</div>
+                        <div class="step" id="step-infer"><span class="indicator"></span> Computing Metrics</div>
+                        <div class="step" id="step-output"><span class="indicator"></span> Generating Maps</div>
+                    </div>
+                </div>
+
+                <!-- Metrics Panel -->
+                <div class="panel hidden" id="metrics-panel">
+                    <h2>Quality Metrics</h2>
+                    <div class="val-metric-card">
+                        <div class="val-metric-row">
+                            <span>PSNR (dB)</span>
+                            <span class="val-metric-value mono" id="val-psnr">-</span>
+                        </div>
+                        <div class="val-metric-row">
+                            <span>SSIM</span>
+                            <span class="val-metric-value mono" id="val-ssim">-</span>
+                        </div>
+                        <div class="val-metric-row">
+                            <span>SAM Error (rad)</span>
+                            <span class="val-metric-value mono" id="val-sam">-</span>
+                        </div>
+                        <div class="val-metric-row">
+                            <span>NDVI Error</span>
+                            <span class="val-metric-value mono" id="val-ndvi">-</span>
+                        </div>
+                        <div class="val-metric-row">
+                            <span>RMSE</span>
+                            <span class="val-metric-value mono" id="val-rmse">-</span>
+                        </div>
+                        <div class="val-metric-row">
+                            <span>Confidence</span>
+                            <span class="val-metric-value mono" id="val-conf">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interpretation Panel -->
+                <div class="panel hidden" id="interpretation-panel">
+                    <h2 id="interp-title">Reference-Based Confidence</h2>
+                    <div class="val-interpretation" id="interp-text">
+                        Measures pixel-level agreement between the SR output and your HR reference. <strong>Green = high confidence</strong> (SR closely matches HR). <strong>Blue-to-white = low confidence</strong> (SR diverges from HR). Derived from the inverse of the 4-band reconstruction error with 2nd–98th percentile normalization. This is a reference-based quality score, not a model-uncertainty estimate.
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script src="validation.js?v=1"></script>
+</body>
+</html>
