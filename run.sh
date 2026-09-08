@@ -26,6 +26,8 @@ elif [ "$choice" = "2" ]; then
     fi
     source .venv/bin/activate
     echo "Installing dependencies..."
+    echo "Note: GeoTIFF support uses 'rasterio'. If installation fails, you may need system GDAL libraries:"
+    echo "      sudo apt-get install libgdal-dev gdal-bin"
     pip install -r requirements.txt || { echo "Failed to install dependencies!"; exit 1; }
     echo ""
     echo "Starting FastAPI server..."

@@ -107,17 +107,67 @@ async def predict(lr_file: UploadFile = File(...)):
         if os.path.exists(lr_path):
             os.remove(lr_path)
 
+@app.post("/preview")
+async def preview(file: UploadFile = File(...)):
+    """
+    Convert any uploaded image to a displayable PNG base64 preview.
+    Used by the frontend for formats browsers can't render (TIFF, GeoTIFF, JP2).
+    """
+    temp_path = os.path.join(TEMP_DIR, f"preview_{file.filename}")
+    try:
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        from backend.image_utils import load_image_universal
+        from backend.inference import array_to_base64_png
+        import numpy as np
+        
+        pil_img, geo_meta = load_image_universal(temp_path)
+        img_array = np.array(pil_img)
+        preview_b64 = array_to_base64_png(img_array)
+        
+        return JSONResponse({
+            "preview": preview_b64,
+            "width": pil_img.width,
+            "height": pil_img.height,
+            "format": os.path.splitext(file.filename)[1].lower(),
+            "bands": geo_meta["band_count"] if geo_meta else 3
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Preview error: {str(e)}")
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
 @app.get("/download_image")
 async def download_image(job_id: str):
-    """Download the generated SR PNG."""
-    file_path = os.path.join(TEMP_DIR, f"{job_id}.png")
-    if not os.path.exists(file_path):
+    """Download the generated SR image."""
+    import glob
+    search_pattern = os.path.join(TEMP_DIR, f"{job_id}.*")
+    matches = glob.glob(search_pattern)
+    
+    if not matches:
         raise HTTPException(status_code=404, detail="SR output not found or expired.")
+        
+    file_path = matches[0]
+    ext = os.path.splitext(file_path)[1].lower()
+    
+    media_types = {
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.tif': 'image/tiff',
+        '.tiff': 'image/tiff',
+        '.jp2': 'image/jp2'
+    }
+    mtype = media_types.get(ext, 'application/octet-stream')
     
     return FileResponse(
         path=file_path, 
-        filename=f"SR_output_{job_id[:8]}.png", 
-        media_type="image/png"
+        filename=f"SR_output_{job_id[:8]}{ext}", 
+        media_type=mtype
     )
 
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")

@@ -32,9 +32,11 @@ if "%choice%"=="1" (
     )
     call .venv\Scripts\activate.bat
     echo Installing dependencies...
+    echo (Note: GeoTIFF support requires 'rasterio'. If pip fails to find a pre-compiled wheel, you may need a 64-bit Python version.^)
     pip install -r requirements.txt
     if !errorlevel! neq 0 (
         echo Failed to install dependencies!
+        echo If rasterio failed, ensure you are using a standard 64-bit Python version from python.org.
         pause
         exit /b !errorlevel!
     )

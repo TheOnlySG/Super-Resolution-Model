@@ -47,10 +47,10 @@ const state = {
 function handleFileSelect(files, zone) {
     if (files && files.length > 0) {
         const file = files[0];
-        const allowedExt = ['.png', '.jpg', '.jpeg'];
+        const allowedExt = ['.png', '.jpg', '.jpeg', '.tif', '.tiff', '.jp2'];
         const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
         if (!allowedExt.includes(ext)) {
-            alert('Invalid file type. Please upload .png, .jpg, or .jpeg');
+            alert('Invalid file type. Please upload .png, .jpg, .jpeg, .tif, .tiff, or .jp2');
             return;
         }
 
@@ -59,28 +59,61 @@ function handleFileSelect(files, zone) {
         zone.classList.add('has-file');
         startBtn.disabled = false;
         
-        // Show local preview immediately
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                imgOriginal.src = e.target.result;
-                imgSR.src = e.target.result; // Temp until SR finishes
-                state.original.w = img.naturalWidth;
-                state.original.h = img.naturalHeight;
-                state.sr.w = img.naturalWidth; // Temp
-                state.sr.h = img.naturalHeight; // Temp
-                
-                stageEmpty.classList.add('hidden');
-                viewerContainer.classList.remove('hidden');
-                
-                fitToScreen('original');
-                if (isSync) syncFrom('original');
-                else fitToScreen('sr');
+        const browserNative = ['.png', '.jpg', '.jpeg'];
+        const needsServerPreview = !browserNative.includes(ext);
+        
+        if (needsServerPreview) {
+            zone.querySelector('p').innerText = 'Converting preview...';
+            const previewForm = new FormData();
+            previewForm.append('file', file);
+            
+            fetch('/preview', { method: 'POST', body: previewForm })
+                .then(res => res.json())
+                .then(data => {
+                    const previewSrc = "data:image/png;base64," + data.preview;
+                    imgOriginal.src = previewSrc;
+                    imgSR.src = previewSrc;
+                    state.original.w = data.width;
+                    state.original.h = data.height;
+                    state.sr.w = data.width;
+                    state.sr.h = data.height;
+                    
+                    zone.querySelector('p').innerText = lrFile.name;
+                    stageEmpty.classList.add('hidden');
+                    viewerContainer.classList.remove('hidden');
+                    
+                    fitToScreen('original');
+                    if (isSync) syncFrom('original');
+                    else fitToScreen('sr');
+                })
+                .catch(err => {
+                    alert("Preview error: " + err.message);
+                    zone.querySelector('p').innerText = 'Preview failed';
+                });
+        } else {
+            // Show local preview immediately
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    imgOriginal.src = e.target.result;
+                    imgSR.src = e.target.result; // Temp until SR finishes
+                    state.original.w = img.naturalWidth;
+                    state.original.h = img.naturalHeight;
+                    state.sr.w = img.naturalWidth; // Temp
+                    state.sr.h = img.naturalHeight; // Temp
+                    
+                    stageEmpty.classList.add('hidden');
+                    viewerContainer.classList.remove('hidden');
+                    
+                    fitToScreen('original');
+                    if (isSync) syncFrom('original');
+                    else fitToScreen('sr');
+                };
+                img.src = e.target.result;
             };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
+            reader.readAsDataURL(file);
+        }
     }
 }
 
