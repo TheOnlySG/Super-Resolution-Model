@@ -196,6 +196,8 @@ async def validate(hr_file: UploadFile = File(...), job_id: str = Form(...)):
             raise HTTPException(status_code=400, detail=" ".join(result["errors"]))
             
         return JSONResponse(content=result)
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()

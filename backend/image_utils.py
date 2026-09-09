@@ -71,3 +71,29 @@ def load_image_universal(file_path: str) -> tuple[Image.Image, dict | None]:
             
     else:
         raise ValueError(f"Unsupported file extension: {ext}")
+
+def load_geotiff_raw(file_path: str) -> tuple[np.ndarray, dict]:
+    """
+    Load a GeoTIFF and return the raw 4-band float32 data.
+    Returns: (ndarray shape (4, H, W) float32, geo_metadata)
+    """
+    import rasterio
+    
+    with rasterio.open(file_path) as src:
+        bands = src.count
+        if bands < 4:
+            raise ValueError(f"Expected at least 4 bands for GeoTIFF, found {bands}")
+            
+        geo_meta = {
+            "crs": src.crs.to_string() if src.crs else None,
+            "transform": tuple(src.transform) if src.transform else None,
+            "original_dtype": str(src.dtypes[0]),
+            "band_count": bands,
+            "width": src.width,
+            "height": src.height,
+        }
+        
+        # Read exactly the first 4 bands (usually B2, B3, B4, B8)
+        data = src.read([1, 2, 3, 4]).astype(np.float32) # (4, H, W)
+        
+    return data, geo_meta

@@ -3,24 +3,29 @@ import io
 import base64
 import numpy as np
 
-def validate_alignment(sr_meta, hr_src):
+def validate_alignment(sr_meta, hr_src, sr_shape):
     """
     Checks that the HR GeoTIFF is compatible with the SR output.
+    sr_shape is (4, H, W)
     Returns (is_valid: bool, errors: list[str], warnings: list[str])
     """
     errors = []
     warnings = []
     
+    # 0. Check normalization space
+    if sr_meta and "tensor" in sr_meta:
+        if not sr_meta["tensor"].get("is_multispectral", False):
+            errors.append("Validation requires a 4-band GeoTIFF input for SR generation. The provided SR output was generated from an RGB input, which uses a different normalization space (/255) and cannot be accurately compared to a multispectral reference.")
+            return False, errors, warnings
+            
     # 1. Band count
-    if hr_src.count != 4:
-        errors.append(f"HR must have exactly 4 bands. Found {hr_src.count}.")
+    if hr_src.count < 4:
+        errors.append(f"HR must have at least 4 bands. Found {hr_src.count}.")
         
     # 2. Spatial dimensions
-    if sr_meta and "output" in sr_meta:
-        w_sr = sr_meta["output"].get("width")
-        h_sr = sr_meta["output"].get("height")
-        if hr_src.width != w_sr or hr_src.height != h_sr:
-            errors.append(f"Spatial dimension mismatch. SR is {w_sr}x{h_sr}, HR is {hr_src.width}x{hr_src.height}.")
+    h_sr, w_sr = sr_shape[1], sr_shape[2]
+    if hr_src.width != w_sr or hr_src.height != h_sr:
+        errors.append(f"Spatial dimension mismatch. SR tensor is {w_sr}x{h_sr}, HR is {hr_src.width}x{hr_src.height}.")
             
     return len(errors) == 0, errors, warnings
 
@@ -119,9 +124,15 @@ def run_validation(sr_tensor_path: str, hr_path: str, sr_meta: dict, normalizati
     """
     import rasterio
     
-    # 1. Load HR
+    if sr_meta and "tensor" in sr_meta:
+        normalization = sr_meta["tensor"].get("normalization", normalization)
+        
+    # 1. Load SR
+    sr = np.load(sr_tensor_path)
+    
+    # 2. Load HR
     with rasterio.open(hr_path) as hr_src:
-        is_valid, errors, warnings = validate_alignment(sr_meta, hr_src)
+        is_valid, errors, warnings = validate_alignment(sr_meta, hr_src, sr.shape)
         if not is_valid:
             return {
                 "status": "error",
@@ -132,11 +143,8 @@ def run_validation(sr_tensor_path: str, hr_path: str, sr_meta: dict, normalizati
         # Read bands 1,2,3,4
         hr_raw = hr_src.read([1, 2, 3, 4]).astype(np.float32)
         
-    # 2. Normalize HR
+    # 3. Normalize HR
     hr_norm = hr_raw / normalization
-    
-    # 3. Load SR
-    sr = np.load(sr_tensor_path)
     
     # 4. Compute metrics
     error_map, recon_mean = compute_reconstruction_error(sr, hr_norm)
@@ -150,7 +158,7 @@ def run_validation(sr_tensor_path: str, hr_path: str, sr_meta: dict, normalizati
     
     # 5. Colorize maps
     recon_img = colorize_map(error_map, "inferno")
-    conf_img = colorize_map(confidence_map, "Blues", vmin=0, vmax=1)
+    conf_img = colorize_map(confidence_map, "RdYlGn", vmin=0, vmax=1)
     sam_img = colorize_map(sam_map, "magma")
     ndvi_img = colorize_map(ndvi_map, "magma")
     

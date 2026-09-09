@@ -26,7 +26,7 @@ const viewerState = {
 const interpretations = {
     confidence: {
         title: "Reference-Based Confidence",
-        text: "Measures pixel-level agreement between the SR output and your HR reference. <strong>Green = high confidence</strong> (SR closely matches HR). <strong>Blue-to-white = low confidence</strong> (SR diverges from HR). Derived from the inverse of the 4-band reconstruction error with 2nd–98th percentile normalization. This is a reference-based quality score, not a model-uncertainty estimate."
+        text: "Measures pixel-level agreement between the SR output and your HR reference. <strong>Green = high confidence</strong> (SR closely matches HR). <strong>Red = low confidence</strong> (SR diverges from HR). Derived from the inverse of the 4-band reconstruction error with 2nd–98th percentile normalization. This is a reference-based quality score, not a model-uncertainty estimate."
     },
     reconstruction_error: {
         title: "Multispectral Reconstruction Error",

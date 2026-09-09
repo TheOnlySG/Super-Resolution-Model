@@ -37,53 +37,75 @@ def run_inference_pipeline(model, device, lr_path, normalization=DEFAULT_NORMALI
     Executes the SR pipeline for standard RGB images using a 4-channel model adapter.
     """
     try:
-        pil_img, geo_meta = load_image_universal(lr_path)
+        ext = os.path.splitext(lr_path)[1].lower()
+        if ext in ['.tif', '.tiff']:
+            from backend.image_utils import load_geotiff_raw
+            # Load raw 4-band float32 data
+            data, geo_meta = load_geotiff_raw(lr_path)
+            width, height = geo_meta["width"], geo_meta["height"]
+            orig_format = "TIFF"
+            
+            # Create a simple preview from first 3 bands using percentile stretch
+            lr_rgb = np.transpose(data[:3, :, :], (1, 2, 0))
+            p2, p98 = np.percentile(lr_rgb, (2, 98))
+            if p98 > p2:
+                lr_preview_rgb = np.clip((lr_rgb - p2) / (p98 - p2), 0, 1) * 255.0
+            else:
+                lr_preview_rgb = np.zeros_like(lr_rgb)
+            lr_preview = array_to_base64_png(lr_preview_rgb.astype(np.uint8))
+            
+            lr_norm = data / normalization
+            input_tensor = torch.tensor(lr_norm, dtype=torch.float32).unsqueeze(0).to(device)
+            used_normalization = normalization
+        else:
+            pil_img, geo_meta = load_image_universal(lr_path)
+            width, height = pil_img.size
+            orig_format = pil_img.format or "PNG"
+            
+            lr_rgb = np.array(pil_img, dtype=np.float32)
+            lr_preview = array_to_base64_png(lr_rgb.astype(np.uint8))
+            
+            lr_padded = np.zeros((height, width, 4), dtype=np.float32)
+            lr_padded[:, :, :3] = lr_rgb
+            lr_tensor_data = np.transpose(lr_padded, (2, 0, 1))
+            
+            lr_norm = lr_tensor_data / 255.0
+            input_tensor = torch.tensor(lr_norm, dtype=torch.float32).unsqueeze(0).to(device)
+            used_normalization = 255.0
     except Exception as e:
         raise ValueError(f"Image Error: {str(e)}")
         
-    width, height = pil_img.size
-    orig_format = pil_img.format or "PNG"
     file_size = os.path.getsize(lr_path)
-    
-    # 1. Prepare RGB Array
-    lr_rgb = np.array(pil_img, dtype=np.float32) # Shape: (H, W, 3)
-    
-    # Generate Base64 Preview for UI
-    lr_preview = array_to_base64_png(lr_rgb.astype(np.uint8))
-    
-    # 2. 3 -> 4 Channel Adapter
-    # The RCAN model strictly requires 4 input channels. 
-    # We pad with zeros to form a (H, W, 4) tensor.
-    lr_padded = np.zeros((height, width, 4), dtype=np.float32)
-    lr_padded[:, :, :3] = lr_rgb
-    
-    # Rearrange to (4, H, W)
-    lr_tensor_data = np.transpose(lr_padded, (2, 0, 1))
-    
-    # Normalize (Standard RGB is 0-255)
-    lr_norm = lr_tensor_data / 255.0
-    
-    input_tensor = torch.tensor(lr_norm, dtype=torch.float32).unsqueeze(0).to(device)
-    
+
     # 3. Inference
     with torch.no_grad():
         output_tensor = model(input_tensor)
         
-    # 4. 4 -> 3 Channel Extraction
-    # Model returns (1, 4, H_out, W_out). We take the first 3 channels.
-    sr_norm = output_tensor.squeeze(0).cpu().clamp(0, 1).numpy()
+    # Raw tensor for validation (NO CLAMPING)
+    sr_raw = output_tensor.squeeze(0).cpu().numpy()
     
     job_id = str(uuid.uuid4())
     
     # Save the full 4-band normalized tensor for downstream validation
-    np.save(os.path.join(TEMP_DIR, f"{job_id}_sr_tensor.npy"), sr_norm)
+    np.save(os.path.join(TEMP_DIR, f"{job_id}_sr_tensor.npy"), sr_raw)
     
-    sr_rgb_norm = sr_norm[:3, :, :] # (3, H_out, W_out)
-    
-    # Convert back to (H_out, W_out, 3) uint8
-    sr_rgb = (np.transpose(sr_rgb_norm, (1, 2, 0)) * 255.0).astype(np.uint8)
+    # 4. 4 -> 3 Channel Extraction for RGB visualization
+    if ext in ['.tif', '.tiff']:
+        # GeoTIFF path: model output is in /3000 space.
+        # Apply same percentile stretch as notebook for RGB preview.
+        sr_rgb_raw = np.transpose(sr_raw[:3, :, :], (1, 2, 0))  # (H, W, 3)
+        p2, p98 = np.percentile(sr_rgb_raw, (2, 98))
+        if p98 > p2:
+            sr_rgb = (np.clip((sr_rgb_raw - p2) / (p98 - p2), 0, 1) * 255.0).astype(np.uint8)
+        else:
+            sr_rgb = np.zeros_like(sr_rgb_raw, dtype=np.uint8)
+    else:
+        # RGB path: model output is in [0, 1]. Simple × 255.
+        sr_clamped = np.clip(sr_raw, 0, 1)
+        sr_rgb_norm = sr_clamped[:3, :, :]
+        sr_rgb = (np.transpose(sr_rgb_norm, (1, 2, 0)) * 255.0).astype(np.uint8)
+        
     sr_height, sr_width, _ = sr_rgb.shape
-    
     sr_preview = array_to_base64_png(sr_rgb)
     
     # 5. Save Output
@@ -142,6 +164,10 @@ def run_inference_pipeline(model, device, lr_path, normalization=DEFAULT_NORMALI
                 "channels": 3,
                 "scale_factor": 4,
                 "format": orig_format
+            },
+            "tensor": {
+                "normalization": used_normalization,
+                "is_multispectral": ext in ['.tif', '.tiff']
             }
         },
         "visualizations": {
@@ -149,7 +175,7 @@ def run_inference_pipeline(model, device, lr_path, normalization=DEFAULT_NORMALI
             "sr_rgb": sr_preview
         },
         "geo_metadata": geo_meta,
-        "normalization": normalization
+        "normalization": used_normalization
     }
     
     import json
