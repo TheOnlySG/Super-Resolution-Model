@@ -1,1 +1,4 @@
 .venv
+temp_outputs/
+backend/__pycache__
+model/segmentation/__pycache__

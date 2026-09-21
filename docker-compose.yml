@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sih_sr_app
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      - sr_outputs:/app/temp_outputs
+    environment:
+      - MODEL_PATH=${MODEL_PATH:-/app/model/RCAN_v2.pth}
+      - DEVICE=${DEVICE:-cpu}
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  sr_outputs:

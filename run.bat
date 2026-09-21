@@ -43,7 +43,7 @@ if "%choice%"=="1" (
     echo.
     echo Starting FastAPI server...
     set PYTHONUNBUFFERED=1
-    set MODEL_PATH=model/rcan_improved.pth
+    set MODEL_PATH=model/RCAN_v2.pth
     uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ) else (
     echo Invalid choice. Exiting.

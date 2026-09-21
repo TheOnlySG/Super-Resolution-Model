@@ -21,8 +21,8 @@ app.add_middleware(
 
 MODEL = None
 SEG_MODEL = None
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(os.path.dirname(__file__), "..", "model", "rcan_improved.pth"))
+DEVICE = os.environ.get("DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
+MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(os.path.dirname(__file__), "..", "model", "RCAN_v2.pth"))
 
 @app.on_event("startup")
 async def startup_event():

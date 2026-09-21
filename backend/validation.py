@@ -162,12 +162,19 @@ def run_validation(sr_tensor_path: str, hr_path: str, sr_meta: dict, normalizati
     sam_img = colorize_map(sam_map, "magma")
     ndvi_img = colorize_map(ndvi_map, "magma")
     
+    # HR RGB 
+    # Use natural order [0, 1, 2] and global stretch to match LR and SR preview
+    from backend.image_utils import normalize_to_uint8
+    hr_rgb_raw = np.transpose(hr_norm[:3], (1, 2, 0))
+    hr_rgb_uint8 = normalize_to_uint8(hr_rgb_raw)
+    
     # 6. Encode maps
     maps = {
         "reconstruction_error": array_to_base64_png(recon_img),
         "confidence": array_to_base64_png(conf_img),
         "sam_error": array_to_base64_png(sam_img),
-        "ndvi_error": array_to_base64_png(ndvi_img)
+        "ndvi_error": array_to_base64_png(ndvi_img),
+        "hr_rgb": array_to_base64_png(hr_rgb_uint8)
     }
     
     metrics = {

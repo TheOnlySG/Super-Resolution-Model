@@ -13,6 +13,7 @@
         <header class="app-header">
             <div style="display: flex; align-items: center; gap: 0.75rem;">
                 <h1>Validation & Quality Assessment</h1>
+                <button class="info-btn" data-info-title="Full-Reference Quality Assessment" data-info-content="Evaluates Super-Resolution model output against ground truth High-Resolution imagery across spatial, spectral, and radiometric metrics.">i</button>
                 <span class="platform-tagline" style="font-size: 0.85rem; color: var(--text-secondary); border-left: 1px solid var(--border-color); padding-left: 0.75rem; font-weight: 400;">Beyond Resolutions — Every Pixel Matters</span>
             </div>
             <div class="header-right">
@@ -20,113 +21,261 @@
             </div>
         </header>
 
-        <!-- Main Layout -->
+        <!-- Main Layout (Stacked) -->
         <div class="val-layout">
-            <!-- Left: Viewer -->
-            <div class="val-viewer-area">
-                <div class="val-tabs" id="val-tabs">
-                    <button class="val-tab active" data-tab="confidence">Confidence</button>
-                    <button class="val-tab" data-tab="reconstruction_error">Recon Error</button>
-                    <button class="val-tab" data-tab="sam_error">SAM Error</button>
-                    <button class="val-tab" data-tab="ndvi_error">NDVI Error</button>
-                </div>
-                
-                <div class="val-canvas-pane" id="val-pane">
-                    <div id="stage-empty" class="stage-message">
-                        Upload a 4-band HR GeoTIFF to validate the SR output.
+            
+            <!-- Three-Way Comparison Viewer -->
+            <div class="comparison-viewer" id="comparison-viewer">
+                <div class="comparison-pane" id="comp-lr" data-pane="lr">
+                    <div class="viewer-label">LOW RESOLUTION</div>
+                    <div class="canvas-container" id="comp-lr-container">
+                        <img id="comp-lr-img" class="viewer-img" alt="LR">
                     </div>
-                    <div id="val-container" class="canvas-container hidden">
-                        <img id="val-img" class="viewer-img" alt="Validation Map">
+                    <div class="pane-controls">
+                        <span class="mono zoom-text" id="zoom-comp-lr" style="font-size: 0.7rem;">100%</span>
+                        <div class="btn-group-row">
+                            <button class="ctrl-btn text-btn comp-fit-btn" data-target="lr" style="font-size: 0.65rem;">FIT</button>
+                            <button class="ctrl-btn text-btn comp-reset-btn" data-target="lr" style="font-size: 0.65rem;">RESET</button>
+                            <button class="ctrl-btn text-btn fullscreen-btn" data-target="comp-lr" title="Fullscreen" style="font-size: 0.75rem;">⤢</button>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="viewer-controls" id="val-controls" style="display: none;">
-                    <button class="ctrl-btn" id="ctrl-zoom-out" title="Zoom Out">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                    </button>
-                    <span class="mono" id="zoom-level" style="margin: 0 0.5rem;">100%</span>
-                    <button class="ctrl-btn" id="ctrl-zoom-in" title="Zoom In">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                    </button>
-                    <div class="ctrl-divider"></div>
-                    <button class="ctrl-btn" id="ctrl-fit" title="Fit to Screen">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v6h6M20 10V4h-6M10 20H4v-6M14 4h6v6"></path></svg>
-                    </button>
-                    <button class="ctrl-btn" id="ctrl-1to1" title="1:1 Native Resolution">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="12" cy="12" r="3"></circle></svg>
-                    </button>
+                <div class="comparison-pane" id="comp-sr" data-pane="sr">
+                    <div class="viewer-label">SUPER-RESOLVED (4×)</div>
+                    <div class="canvas-container" id="comp-sr-container">
+                        <img id="comp-sr-img" class="viewer-img" alt="SR">
+                    </div>
+                    <div class="pane-controls">
+                        <span class="mono zoom-text" id="zoom-comp-sr" style="font-size: 0.7rem;">100%</span>
+                        <div class="btn-group-row">
+                            <button class="ctrl-btn text-btn comp-fit-btn" data-target="sr" style="font-size: 0.65rem;">FIT</button>
+                            <button class="ctrl-btn text-btn comp-reset-btn" data-target="sr" style="font-size: 0.65rem;">RESET</button>
+                            <button class="ctrl-btn text-btn fullscreen-btn" data-target="comp-sr" title="Fullscreen" style="font-size: 0.75rem;">⤢</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="comparison-pane" id="comp-hr" data-pane="hr">
+                    <div class="viewer-label">GROUND TRUTH (HR)</div>
+                    <div class="canvas-container" id="comp-hr-container">
+                        <div id="comp-hr-empty" class="stage-message">Upload HR to compare</div>
+                        <img id="comp-hr-img" class="viewer-img hidden" alt="HR">
+                    </div>
+                    <div class="pane-controls">
+                        <span class="mono zoom-text" id="zoom-comp-hr" style="font-size: 0.7rem;">100%</span>
+                        <div class="btn-group-row">
+                            <button class="ctrl-btn text-btn comp-fit-btn" data-target="hr" style="font-size: 0.65rem;">FIT</button>
+                            <button class="ctrl-btn text-btn comp-reset-btn" data-target="hr" style="font-size: 0.65rem;">RESET</button>
+                            <button class="ctrl-btn text-btn fullscreen-btn" data-target="comp-hr" title="Fullscreen" style="font-size: 0.75rem;">⤢</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Right: Sidebar -->
-            <aside class="val-sidebar">
-                <!-- Upload Panel -->
-                <div class="panel" id="upload-panel">
-                    <h2>Upload Ground Truth</h2>
-                    <div class="upload-zone" id="hr-drop-zone">
+            <!-- Horizontal Control Bar -->
+            <div class="val-control-bar">
+                <div class="val-upload-compact" id="upload-panel">
+                    <div class="upload-zone" id="hr-drop-zone" title="Upload the corresponding 4-band HR GeoTIFF (B2, B3, B4, B8) for quality assessment">
                         <span class="upload-icon">⇪</span>
-                        <p>Drop HR Reference Here</p>
-                        <small>4-band .tif / .tiff only</small>
+                        <p style="margin: 0; font-size: 0.875rem;">Drop HR .tif Here</p>
                         <input type="file" id="hr-file-input" accept=".tif,.tiff">
                     </div>
-                    <div id="upload-error" class="error-text hidden"></div>
-                    <div class="action-bar">
-                        <button id="validate-start-btn" class="primary-btn" disabled>Run Validation</button>
+                    <button id="validate-start-btn" class="primary-btn" style="width: auto; white-space: nowrap;" disabled>Run Validation</button>
+                    <button class="info-btn" data-info-title="Ground Truth HR Specification" data-info-content="Upload the target 4-band GeoTIFF at 4× spatial resolution. Must match exact geographic extent and spectral band ordering (B2, B3, B4, B8).">i</button>
+                </div>
+                <div id="upload-error" class="error-text hidden" style="color: var(--danger); font-size: 0.8rem;"></div>
+                
+                <div class="val-metrics-row hidden" id="metrics-panel">
+                    <div class="val-metric-card-compact" title="Peak Signal-to-Noise Ratio (higher is better, >30 dB is excellent)">
+                        <span style="font-size: 0.7rem; color: var(--text-secondary);">PSNR (dB) <button class="info-btn" data-info-title="PSNR (Peak Signal-to-Noise Ratio)" data-info-content="Measures overall signal quality in decibels relative to peak reflectance. Higher values indicates lower reconstruction noise. Benchmark: >30 dB is excellent.">i</button></span>
+                        <span class="mono" id="val-psnr" style="font-weight: 600;">-</span>
+                    </div>
+                    <div class="val-metric-card-compact" title="Structural Similarity Index (closer to 1.0 is better)">
+                        <span style="font-size: 0.7rem; color: var(--text-secondary);">SSIM <button class="info-btn" data-info-title="SSIM (Structural Similarity Index)" data-info-content="Evaluates structural similarity including luminance, contrast, and edge structure. Benchmark: Range [0, 1], values >0.85 indicate high structural fidelity.">i</button></span>
+                        <span class="mono" id="val-ssim" style="font-weight: 600;">-</span>
+                    </div>
+                    <div class="val-metric-card-compact" title="Spectral Angle Mapper (lower is better, <3° is excellent)">
+                        <span style="font-size: 0.7rem; color: var(--text-secondary);">SAM Error <button class="info-btn" data-info-title="SAM (Spectral Angle Mapper Error)" data-info-content="Measures average spectral angle deviation across 4-band spectral vectors. Benchmark: Values <3° denote high spectral purity preservation.">i</button></span>
+                        <span class="mono" id="val-sam" style="font-weight: 600;">-</span>
+                    </div>
+                    <div class="val-metric-card-compact" title="Normalized Difference Vegetation Index Error (lower is better)">
+                        <span style="font-size: 0.7rem; color: var(--text-secondary);">NDVI Error <button class="info-btn" data-info-title="NDVI Error (Vegetation Index Distortion)" data-info-content="Measures absolute error in vegetation index calculation between SR and HR. Benchmark: Near 0.0 denotes accurate preservation of land/vegetation boundaries.">i</button></span>
+                        <span class="mono" id="val-ndvi" style="font-weight: 600;">-</span>
+                    </div>
+                    <div class="val-metric-card-compact" title="Root Mean Squared Error (lower is better)">
+                        <span style="font-size: 0.7rem; color: var(--text-secondary);">RMSE <button class="info-btn" data-info-title="RMSE (Root Mean Squared Error)" data-info-content="Quantifies average magnitude of per-pixel reconstruction error across all spectral bands. Lower values indicate tighter error bounds.">i</button></span>
+                        <span class="mono" id="val-rmse" style="font-weight: 600;">-</span>
+                    </div>
+                    <div class="val-metric-card-compact" title="Reference-Based Model Confidence (1.0 is highest confidence)">
+                        <span style="font-size: 0.7rem; color: var(--text-secondary);">Confidence <button class="info-btn" data-info-title="Reference Confidence" data-info-content="Overall model confidence score derived from 2%-98% robust error normalization. Range [0.0, 1.0], with 1.0 representing perfect spatial reconstruction.">i</button></span>
+                        <span class="mono" id="val-conf" style="font-weight: 600;">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Maps Grid (2x2) -->
+            <div class="error-grid hidden" id="error-grid">
+                
+                <!-- Confidence Map -->
+                <div class="error-card" id="card-confidence">
+                    <div class="error-card-header">
+                        <span class="error-card-title">Reference-Based Confidence <button class="info-btn" data-info-title="Confidence Map Mechanics" data-info-content="Spatial confidence map derived from normalized absolute reconstruction error. High values indicate high reconstruction accuracy and spatial reliability.">i</button></span>
+                        <span class="error-card-badge" id="badge-confidence">-</span>
+                    </div>
+                    <div class="error-card-viewer" data-map="confidence" id="viewer-confidence">
+                        <div class="canvas-container" id="container-confidence">
+                            <img class="viewer-img" id="img-confidence">
+                        </div>
+                        <div class="error-colorbar-vertical" id="cb-confidence"></div>
+                    </div>
+                    <div class="error-card-controls">
+                        <span class="mono zoom-text" id="zoom-confidence" style="font-size: 0.75rem;">100%</span>
+                        <div class="btn-group-row">
+                            <button class="ctrl-btn text-btn fit-btn" data-target="confidence" style="font-size: 0.65rem;">FIT</button>
+                            <button class="ctrl-btn text-btn reset-btn" data-target="confidence" style="font-size: 0.65rem;">RESET</button>
+                            <button class="ctrl-btn text-btn fullscreen-btn" data-target="card-confidence" title="Fullscreen" style="font-size: 0.75rem;">⤢</button>
+                        </div>
+                    </div>
+                    <!-- Description, Formula & Legend -->
+                    <div class="error-card-info-panel">
+                        <div class="error-card-desc">Quantifies spatial fidelity relative to HR ground truth. High values denote high model confidence and accurate reconstruction.</div>
+                        <div class="error-card-formula">C(x,y) = 1.0 - clip((E(x,y) - P₂) / (P₉₈ - P₂), 0, 1)</div>
+                        <div class="color-legend-wrapper">
+                            <div class="color-legend-title">Color Scale Depiction</div>
+                            <div class="color-legend-bar legend-rdylgn"></div>
+                            <div class="color-legend-labels">
+                                <span>Red (0.0 Low Conf)</span>
+                                <span>Yellow (0.5)</span>
+                                <span>Green (1.0 High Conf)</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Processing -->
-                <div class="panel hidden" id="processing-panel">
-                    <h2>Processing</h2>
-                    <div class="status-steps">
-                        <div class="step" id="step-upload"><span class="indicator"></span> Uploading & Aligning</div>
-                        <div class="step" id="step-infer"><span class="indicator"></span> Computing Metrics</div>
-                        <div class="step" id="step-output"><span class="indicator"></span> Generating Maps</div>
+                <!-- Reconstruction Error -->
+                <div class="error-card" id="card-reconstruction_error">
+                    <div class="error-card-header">
+                        <span class="error-card-title">Reconstruction Error <button class="info-btn" data-info-title="Reconstruction Error Mechanics" data-info-content="Per-pixel Mean Absolute Error (MAE) evaluated across all 4 multispectral bands (B2, B3, B4, B8). Highlight areas where the SR model deviates from ground truth.">i</button></span>
+                        <span class="error-card-badge" id="badge-reconstruction_error">-</span>
                     </div>
-                </div>
-
-                <!-- Metrics Panel -->
-                <div class="panel hidden" id="metrics-panel">
-                    <h2>Quality Metrics</h2>
-                    <div class="val-metric-card">
-                        <div class="val-metric-row">
-                            <span>PSNR (dB)</span>
-                            <span class="val-metric-value mono" id="val-psnr">-</span>
+                    <div class="error-card-viewer" data-map="reconstruction_error" id="viewer-reconstruction_error">
+                        <div class="canvas-container" id="container-reconstruction_error">
+                            <img class="viewer-img" id="img-reconstruction_error">
                         </div>
-                        <div class="val-metric-row">
-                            <span>SSIM</span>
-                            <span class="val-metric-value mono" id="val-ssim">-</span>
+                        <div class="error-colorbar-vertical" id="cb-reconstruction_error"></div>
+                    </div>
+                    <div class="error-card-controls">
+                        <span class="mono zoom-text" id="zoom-reconstruction_error" style="font-size: 0.75rem;">100%</span>
+                        <div class="btn-group-row">
+                            <button class="ctrl-btn text-btn fit-btn" data-target="reconstruction_error" style="font-size: 0.65rem;">FIT</button>
+                            <button class="ctrl-btn text-btn reset-btn" data-target="reconstruction_error" style="font-size: 0.65rem;">RESET</button>
+                            <button class="ctrl-btn text-btn fullscreen-btn" data-target="card-reconstruction_error" title="Fullscreen" style="font-size: 0.75rem;">⤢</button>
                         </div>
-                        <div class="val-metric-row">
-                            <span>SAM Error (rad)</span>
-                            <span class="val-metric-value mono" id="val-sam">-</span>
-                        </div>
-                        <div class="val-metric-row">
-                            <span>NDVI Error</span>
-                            <span class="val-metric-value mono" id="val-ndvi">-</span>
-                        </div>
-                        <div class="val-metric-row">
-                            <span>RMSE</span>
-                            <span class="val-metric-value mono" id="val-rmse">-</span>
-                        </div>
-                        <div class="val-metric-row">
-                            <span>Confidence</span>
-                            <span class="val-metric-value mono" id="val-conf">-</span>
+                    </div>
+                    <!-- Description, Formula & Legend -->
+                    <div class="error-card-info-panel">
+                        <div class="error-card-desc">Per-pixel Mean Absolute Error across all 4 spectral bands (B2, B3, B4, B8).</div>
+                        <div class="error-card-formula">E(x,y) = ¼ Σᵢ |SRᵢ(x,y) - HRᵢ(x,y)|  for i ∈ {B2,B3,B4,B8}</div>
+                        <div class="color-legend-wrapper">
+                            <div class="color-legend-title">Color Scale Depiction</div>
+                            <div class="color-legend-bar legend-inferno"></div>
+                            <div class="color-legend-labels">
+                                <span>Black (0.0 Zero Error)</span>
+                                <span>Orange/Red</span>
+                                <span>Yellow (High Error)</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Interpretation Panel -->
-                <div class="panel hidden" id="interpretation-panel">
-                    <h2 id="interp-title">Reference-Based Confidence</h2>
-                    <div class="val-interpretation" id="interp-text">
-                        Measures pixel-level agreement between the SR output and your HR reference. <strong>Green = high confidence</strong> (SR closely matches HR). <strong>Red = low confidence</strong> (SR diverges from HR). Derived from the inverse of the 4-band reconstruction error with 2nd–98th percentile normalization. This is a reference-based quality score, not a model-uncertainty estimate.
+                <!-- SAM Error -->
+                <div class="error-card" id="card-sam_error">
+                    <div class="error-card-header">
+                        <span class="error-card-title">Spectral Angle Mapper (SAM) <button class="info-btn" data-info-title="Spectral Angle Mapper Mechanics" data-info-content="Calculates angular deviation between 4D spectral vectors per pixel. Invariant to illumination changes, measuring pure spectral signature fidelity.">i</button></span>
+                        <span class="error-card-badge" id="badge-sam_error">-</span>
+                    </div>
+                    <div class="error-card-viewer" data-map="sam_error" id="viewer-sam_error">
+                        <div class="canvas-container" id="container-sam_error">
+                            <img class="viewer-img" id="img-sam_error">
+                        </div>
+                        <div class="error-colorbar-vertical" id="cb-sam_error"></div>
+                    </div>
+                    <div class="error-card-controls">
+                        <span class="mono zoom-text" id="zoom-sam_error" style="font-size: 0.75rem;">100%</span>
+                        <div class="btn-group-row">
+                            <button class="ctrl-btn text-btn fit-btn" data-target="sam_error" style="font-size: 0.65rem;">FIT</button>
+                            <button class="ctrl-btn text-btn reset-btn" data-target="sam_error" style="font-size: 0.65rem;">RESET</button>
+                            <button class="ctrl-btn text-btn fullscreen-btn" data-target="card-sam_error" title="Fullscreen" style="font-size: 0.75rem;">⤢</button>
+                        </div>
+                    </div>
+                    <!-- Description, Formula & Legend -->
+                    <div class="error-card-info-panel">
+                        <div class="error-card-desc">Measures spectral vector angle deviation per pixel in 4D spectral space (in radians/degrees).</div>
+                        <div class="error-card-formula">θ(x,y) = arccos((v_SR · v_HR) / (||v_SR|| ||v_HR||))</div>
+                        <div class="color-legend-wrapper">
+                            <div class="color-legend-title">Color Scale Depiction</div>
+                            <div class="color-legend-bar legend-magma"></div>
+                            <div class="color-legend-labels">
+                                <span>Black/Purple (0° Match)</span>
+                                <span>Red/Orange</span>
+                                <span>Yellow (High Shift)</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </aside>
+
+                <!-- NDVI Error -->
+                <div class="error-card" id="card-ndvi_error">
+                    <div class="error-card-header">
+                        <span class="error-card-title">NDVI Error <button class="info-btn" data-info-title="NDVI Vegetation Error Mechanics" data-info-content="Evaluates absolute difference in Normalized Difference Vegetation Index between SR and HR outputs. Critical for vegetation and agricultural remote sensing.">i</button></span>
+                        <span class="error-card-badge" id="badge-ndvi_error">-</span>
+                    </div>
+                    <div class="error-card-viewer" data-map="ndvi_error" id="viewer-ndvi_error">
+                        <div class="canvas-container" id="container-ndvi_error">
+                            <img class="viewer-img" id="img-ndvi_error">
+                        </div>
+                        <div class="error-colorbar-vertical" id="cb-ndvi_error"></div>
+                    </div>
+                    <div class="error-card-controls">
+                        <span class="mono zoom-text" id="zoom-ndvi_error" style="font-size: 0.75rem;">100%</span>
+                        <div class="btn-group-row">
+                            <button class="ctrl-btn text-btn fit-btn" data-target="ndvi_error" style="font-size: 0.65rem;">FIT</button>
+                            <button class="ctrl-btn text-btn reset-btn" data-target="ndvi_error" style="font-size: 0.65rem;">RESET</button>
+                            <button class="ctrl-btn text-btn fullscreen-btn" data-target="card-ndvi_error" title="Fullscreen" style="font-size: 0.75rem;">⤢</button>
+                        </div>
+                    </div>
+                    <!-- Description, Formula & Legend -->
+                    <div class="error-card-info-panel">
+                        <div class="error-card-desc">Absolute error in vegetation index calculation between SR and HR features.</div>
+                        <div class="error-card-formula">ΔNDVI(x,y) = |NDVI_SR(x,y) - NDVI_HR(x,y)|  where NDVI = (B8 - B4) / (B8 + B4)</div>
+                        <div class="color-legend-wrapper">
+                            <div class="color-legend-title">Color Scale Depiction</div>
+                            <div class="color-legend-bar legend-magma"></div>
+                            <div class="color-legend-labels">
+                                <span>Dark (0.0 Zero Error)</span>
+                                <span>Purple/Red</span>
+                                <span>Yellow (High Shift)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
 
-    <script src="validation.js?v=1"></script>
+    <!-- GLOBAL INFO MODAL -->
+    <div id="info-modal-backdrop" class="info-modal-backdrop hidden">
+        <div class="info-modal-card">
+            <div class="info-modal-header">
+                <h3 id="info-modal-title">Information</h3>
+                <button id="info-modal-close" class="info-modal-close">&times;</button>
+            </div>
+            <div class="info-modal-body" id="info-modal-body">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script src="validation.js?v=3"></script>
 </body>
 </html>

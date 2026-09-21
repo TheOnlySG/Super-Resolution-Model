@@ -1,5 +1,6 @@
 .git
 .gitignore
+.agents
 __pycache__
 *.pyc
 .venv
@@ -10,4 +11,10 @@ node_modules
 temp_outputs/*
 notebooks
 *.ipynb
+demo
+*.md
+!README.md
+run.sh
+run.bat
 model/segmentation/.cache
+model/segmentation/__pycache__

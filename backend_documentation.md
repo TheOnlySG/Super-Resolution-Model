@@ -78,17 +78,17 @@ model/
 #### `backend/model.py`
 - **Role**: Deep Learning Model Architecture for Super-Resolution.
 - **Key Components**:
-  - **`RCAB` (Residual Channel Attention Block)**: Combines standard $3\times3$ convolutions, ReLU activation, global average pooling, and channel attention mechanism (Sigmoid scaled $\times 0.1$) with a residual skip connection.
-  - **`RCAN` (Residual Channel Attention Network)**:
+  - **`RCAB` (Residual Channel Attention Block)**: Combines standard $3\times3$ convolutions, ReLU activation, global average pooling, and channel attention mechanism (reduction ratio 16) with a residual skip connection.
+  - **`RCAN v2` (Residual Channel Attention Network 48-block)**:
     - `head`: Conv2d mapping $4 \to 96$ feature channels.
-    - `body`: Stack of 12 `RCAB` blocks followed by a $3\times3$ body convolution and global residual connection.
+    - `body`: Stack of 6 `ResidualGroup` modules (each containing 8 `RCAB` blocks, totaling 48 blocks) followed by a $3\times3$ body convolution and global residual connection. Each group has its own local residual skip.
     - `up1` & `up2`: Two sequential $2\times$ upsampling modules using `PixelShuffle(2)` for a total $4\times$ spatial expansion.
     - `tail`: Conv2d mapping $96 \to 4$ output channels ($\text{B2}, \text{B3}, \text{B4}, \text{B8}$).
 
 #### `backend/inference.py`
 - **Role**: Super-Resolution Execution & Asset Lifecycle Engine.
 - **Key Responsibilities**:
-  - `load_model()`: Deserializes PyTorch checkpoint `rcan_improved.pth` ($12$ blocks, $96$ channels, default normalization $3000.0$).
+  - `load_model()`: Deserializes PyTorch checkpoint `RCAN_v2.pth` ($48$ blocks, $96$ channels, default normalization $3000.0$).
   - `run_inference_pipeline()`:
     1. Determines file type (`.tif`/`.tiff` vs RGB).
     2. Loads raster data and metadata.

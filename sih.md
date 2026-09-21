@@ -56,9 +56,9 @@ We use a **Residual Channel Attention Network (RCAN)** tailored for 4-band multi
 - **Key Parameters**:
   - **Input Channels**: $4$ ($\text{B2, B3, B4, B8}$)
   - **Output Channels**: $4$ ($\text{B2, B3, B4, B8}$)
-  - **Residual Blocks**: $12$ Residual Channel Attention Blocks (`RCAB`)
+  - **Residual Blocks**: $48$ Residual Channel Attention Blocks (`RCAB`) organized in $6$ Residual Groups
   - **Feature Channels**: $96$
-  - **Reduction Ratio**: $8$ (for squeezing channel attention)
+  - **Reduction Ratio**: $16$ (for squeezing channel attention)
   - **Upsampling Module**: Two sequential `PixelShuffle(2)` modules achieving a combined $4\times$ spatial expansion ($2 \times 2 = 4$).
 
 ---
@@ -233,7 +233,7 @@ The output GeoTIFF is written with the updated transform matrix and original Coo
 
 | Feature / Component | Technical Implementation Details |
 | :--- | :--- |
-| **SR Model** | Custom 4-band PyTorch RCAN (12 RCAB blocks, 96 channels, 4x upscaling) |
+| **SR Model** | Custom 4-band PyTorch RCAN v2 (48 RCAB blocks, 96 channels, 4x upscaling) |
 | **Input Bands** | Sentinel-2 B2 (Blue), B3 (Green), B4 (Red), B8 (NIR) |
 | **Normalization** | Float32 Division by `3000.0` (unclamped `.npy` tensor output) |
 | **Visualization** | 2nd-98th Percentile Contrast Stretch to 8-bit RGB Base64 PNG |

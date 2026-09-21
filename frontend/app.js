@@ -23,9 +23,6 @@ const containerSR = document.getElementById('container-sr');
 const modeBtns = document.querySelectorAll('.mode-btn');
 const syncCheckbox = document.getElementById('sync-checkbox');
 const activeIndicator = document.getElementById('active-indicator');
-const splitDivider = document.getElementById('split-divider');
-const overlayControls = document.getElementById('overlay-controls');
-const opacitySlider = document.getElementById('opacity-slider');
 const zoomLevelText = document.getElementById('zoom-level-text');
 
 // State
@@ -39,6 +36,51 @@ let activeViewer = 'original'; // 'original' or 'sr'
 const state = {
     original: { scale: 1, panX: 0, panY: 0, w: 0, h: 0, pane: paneOriginal, container: containerOriginal, img: imgOriginal },
     sr: { scale: 1, panX: 0, panY: 0, w: 0, h: 0, pane: paneSR, container: containerSR, img: imgSR }
+};
+
+// -----------------------------------------
+// IndexedDB Wrapper for State Persistence
+// -----------------------------------------
+const openDB = () => new Promise((resolve, reject) => {
+    const request = indexedDB.open('sr_db', 1);
+    request.onupgradeneeded = (e) => e.target.result.createObjectStore('jobs');
+    request.onsuccess = (e) => resolve(e.target.result);
+    request.onerror = (e) => reject(e.target.error);
+});
+
+const saveJob = async (data) => {
+    try {
+        const db = await openDB();
+        const tx = db.transaction('jobs', 'readwrite');
+        tx.objectStore('jobs').put(data, 'current_job');
+        return new Promise(r => tx.oncomplete = r);
+    } catch (e) {
+        console.warn('IndexedDB save failed', e);
+    }
+};
+
+const getJob = async () => {
+    try {
+        const db = await openDB();
+        const tx = db.transaction('jobs', 'readonly');
+        const request = tx.objectStore('jobs').get('current_job');
+        return new Promise(r => {
+            request.onsuccess = () => r(request.result);
+            request.onerror = () => r(null);
+        });
+    } catch (e) {
+        console.warn('IndexedDB read failed', e);
+        return null;
+    }
+};
+
+const clearJob = async () => {
+    try {
+        const db = await openDB();
+        const tx = db.transaction('jobs', 'readwrite');
+        tx.objectStore('jobs').delete('current_job');
+        return new Promise(r => tx.oncomplete = r);
+    } catch (e) {}
 };
 
 // -----------------------------------------
@@ -73,6 +115,13 @@ function handleFileSelect(files, zone) {
                     const previewSrc = "data:image/png;base64," + data.preview;
                     imgOriginal.src = previewSrc;
                     imgSR.src = previewSrc;
+                    
+                    const srLabel = document.getElementById('sr-viewer-label');
+                    if (srLabel) {
+                        srLabel.innerText = "PREVIEW (Awaiting SR)";
+                        srLabel.classList.add('awaiting-sr');
+                    }
+                    
                     state.original.w = data.width;
                     state.original.h = data.height;
                     state.sr.w = data.width;
@@ -98,6 +147,13 @@ function handleFileSelect(files, zone) {
                 img.onload = () => {
                     imgOriginal.src = e.target.result;
                     imgSR.src = e.target.result; // Temp until SR finishes
+                    
+                    const srLabel = document.getElementById('sr-viewer-label');
+                    if (srLabel) {
+                        srLabel.innerText = "PREVIEW (Awaiting SR)";
+                        srLabel.classList.add('awaiting-sr');
+                    }
+
                     state.original.w = img.naturalWidth;
                     state.original.h = img.naturalHeight;
                     state.sr.w = img.naturalWidth; // Temp
@@ -142,20 +198,30 @@ startBtn.addEventListener('click', async () => {
     uploadPanel.classList.add('hidden');
     processingPanel.classList.remove('hidden');
     
-    const setStep = (id, status) => {
-        const step = document.getElementById(id);
-        if(status === 'active') { step.classList.add('active'); step.classList.remove('done'); }
-        if(status === 'done') { step.classList.add('done'); step.classList.remove('active'); }
+    const progressBar = document.getElementById('progress-bar');
+    const progressStatus = document.getElementById('progress-status');
+    const updateProgress = (percent, message) => {
+        if (progressBar) progressBar.style.width = percent + '%';
+        if (progressStatus) progressStatus.innerText = message;
     };
-    setStep('step-upload', 'active');
+    
+    updateProgress(10, 'Analyzing Input…');
 
     try {
         const formData = new FormData();
         formData.append('lr_file', lrFile);
-        setStep('step-upload', 'done'); setStep('step-infer', 'active');
+        
+        let simProgress = 20;
+        const progressInterval = setInterval(() => {
+            if (simProgress < 85) {
+                simProgress += Math.random() * 5;
+                updateProgress(Math.min(simProgress, 85), 'Running Super-Resolution Model…');
+            }
+        }, 500);
         
         const response = await fetch('/predict', { method: 'POST', body: formData });
-        setStep('step-infer', 'done'); setStep('step-output', 'active');
+        clearInterval(progressInterval);
+        updateProgress(90, 'Generating Result…');
 
         if (!response.ok) {
             const err = await response.json();
@@ -163,9 +229,10 @@ startBtn.addEventListener('click', async () => {
         }
 
         const data = await response.json();
+        await saveJob(data);
         populateUI(data);
 
-        setStep('step-output', 'done');
+        updateProgress(100, '✓ Complete');
         setTimeout(() => {
             processingPanel.classList.add('hidden');
             metadataPanel.classList.remove('hidden');
@@ -191,10 +258,18 @@ function populateUI(data) {
     state.sr.h = m.output.height;
     
     imgSR.onload = () => {
+        const srLabel = document.getElementById('sr-viewer-label');
+        if (srLabel) {
+            srLabel.innerText = "SUPER-RESOLVED";
+            srLabel.classList.remove('awaiting-sr');
+        }
         if (isSync) syncFrom('original');
         else fitToScreen('sr');
     };
     imgSR.src = "data:image/png;base64," + data.visualizations.sr_rgb;
+
+    const scrollToSegBtn = document.getElementById('scroll-to-seg-btn');
+    if (scrollToSegBtn) scrollToSegBtn.classList.remove('hidden');
 
     // Stats
     document.getElementById('metadata-tbody').innerHTML = `
@@ -220,6 +295,14 @@ function populateUI(data) {
     document.getElementById('validate-btn').onclick = () => {
         window.location.href = "/validation.html?job_id=" + currentJobId;
     };
+
+    const uploadNewBtn = document.getElementById('upload-new-btn');
+    if (uploadNewBtn) {
+        uploadNewBtn.onclick = async () => {
+            await clearJob();
+            window.location.href = window.location.pathname; // Hard redirect without query params
+        };
+    }
 
     // --- Segmentation ---
     populateSegmentation(data.segmentation);
@@ -273,11 +356,6 @@ function populateSegmentation(seg) {
             <span class="seg-stat-value">${c.percentage.toFixed(1)}%</span>
         </div>
     `).join('');
-
-    // Scroll to segmentation section smoothly
-    setTimeout(() => {
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 300);
 }
 
 // -----------------------------------------
@@ -290,17 +368,9 @@ function setMode(mode) {
     
     if (isSync) workspace.classList.remove('sync-off');
     else workspace.classList.add('sync-off');
-
-    // UI Toggles
-    splitDivider.classList.toggle('hidden', mode !== 'split');
-    overlayControls.classList.toggle('hidden', mode !== 'overlay');
     
-    if (mode === 'split') updateSplitClip(splitPercent);
-    if (mode === 'overlay') paneSR.style.opacity = opacitySlider.value;
-    else paneSR.style.opacity = 1;
+    paneSR.style.opacity = 1;
     
-    // Fit views on mode switch just in case pane sizes drastically changed
-    // Use requestAnimationFrame so CSS layout applies first
     requestAnimationFrame(() => {
         if (isSync) {
             fitToScreen('original');
@@ -476,7 +546,7 @@ let dragStartX, dragStartY;
 let dragTarget = null;
 
 workspace.addEventListener('mousedown', (e) => {
-    if (e.target.closest('.split-divider') || e.target.closest('.overlay-controls')) return;
+    if (e.target.closest('.overlay-controls')) return;
     
     let target = 'original';
     if (currentMode === 'side') {
@@ -570,43 +640,83 @@ document.getElementById('ctrl-fullscreen').onclick = () => {
     setTimeout(() => document.getElementById('ctrl-fit').click(), 50);
 };
 
-// -----------------------------------------
-// SPLIT VIEW SLIDER
-// -----------------------------------------
-let isDraggingSplit = false;
-let splitPercent = 50;
-
-function updateSplitClip(percent) {
-    splitDivider.style.left = percent + '%';
-    // Clip the SR pane so it only shows the RIGHT side of the divider
-    // Polygon: top-left, top-right, bottom-right, bottom-left
-    paneSR.style.clipPath = `polygon(${percent}% 0, 100% 0, 100% 100%, ${percent}% 100%)`;
-}
-
-splitDivider.addEventListener('mousedown', (e) => {
-    isDraggingSplit = true;
-    e.stopPropagation();
-});
-
-window.addEventListener('mousemove', (e) => {
-    if (isDraggingSplit && currentMode === 'split') {
-        const rect = workspace.getBoundingClientRect();
-        let x = e.clientX - rect.left;
-        x = Math.max(0, Math.min(x, rect.width));
-        splitPercent = (x / rect.width) * 100;
-        updateSplitClip(splitPercent);
-    }
-});
-window.addEventListener('mouseup', () => { isDraggingSplit = false; });
-
-// -----------------------------------------
-// OVERLAY SLIDER
-// -----------------------------------------
-opacitySlider.addEventListener('input', (e) => {
-    if (currentMode === 'overlay') {
-        paneSR.style.opacity = e.target.value;
-    }
-});
-
 // Init
 setActiveViewer('original');
+
+// -----------------------------------------
+// STATE RESTORATION ON BACK BUTTON
+// -----------------------------------------
+function restoreWorkstationState(data) {
+    if (!data || !data.metadata || !data.visualizations) return;
+
+    uploadPanel.classList.add('hidden');
+    stageEmpty.classList.add('hidden');
+    viewerContainer.classList.remove('hidden');
+    metadataPanel.classList.remove('hidden');
+
+    state.original.w = data.metadata.input.width;
+    state.original.h = data.metadata.input.height;
+
+    if (data.visualizations.lr_rgb) {
+        const lrSrc = "data:image/png;base64," + data.visualizations.lr_rgb;
+        imgOriginal.src = lrSrc;
+    }
+
+    populateUI(data);
+
+    requestAnimationFrame(() => {
+        fitToScreen('original');
+        if (isSync) syncFrom('original');
+        else fitToScreen('sr');
+    });
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+    const navEntries = performance.getEntriesByType("navigation");
+    const isReload = navEntries.length > 0 && navEntries[0].type === "reload";
+
+    if (isReload) {
+        await clearJob();
+    } else {
+        const data = await getJob();
+        if (data) {
+            restoreWorkstationState(data);
+        }
+    }
+
+    // Scroll to segmentation button handler
+    const scrollToSegBtn = document.getElementById('scroll-to-seg-btn');
+    if (scrollToSegBtn) {
+        scrollToSegBtn.addEventListener('click', () => {
+            const segSection = document.getElementById('segmentation-section');
+            if (segSection) segSection.scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+
+    // Info Modal Handlers
+    const infoModalBackdrop = document.getElementById('info-modal-backdrop');
+    const infoModalTitle = document.getElementById('info-modal-title');
+    const infoModalBody = document.getElementById('info-modal-body');
+    const infoModalClose = document.getElementById('info-modal-close');
+
+    if (infoModalBackdrop && infoModalClose) {
+        document.querySelectorAll('.info-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const title = btn.dataset.infoTitle || "Information";
+                const content = btn.dataset.infoContent || "";
+                infoModalTitle.innerText = title;
+                infoModalBody.innerText = content;
+                infoModalBackdrop.classList.remove('hidden');
+            });
+        });
+
+        infoModalClose.addEventListener('click', () => {
+            infoModalBackdrop.classList.add('hidden');
+        });
+
+        infoModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === infoModalBackdrop) infoModalBackdrop.classList.add('hidden');
+        });
+    }
+});

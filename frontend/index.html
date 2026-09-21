@@ -13,11 +13,12 @@
         <header class="app-header">
             <div class="header-left" style="display: flex; align-items: center; gap: 0.75rem;">
                 <h1>Beyond Resolutions</h1>
+                <button class="info-btn" data-info-title="Satellite SR & Downstream Analytics Platform" data-info-content="This platform performs 4× Deep Learning Super-Resolution on multi-spectral satellite imagery using RCAN v2, restoring high-frequency spatial and spectral details for downstream geospatial analysis.">i</button>
                 <span class="platform-tagline" style="font-size: 0.85rem; color: var(--text-secondary); border-left: 1px solid var(--border-color); padding-left: 0.75rem; font-weight: 400;">Every Pixel Matters</span>
             </div>
             <div class="header-right">
                 <div class="model-badge">Scale: 4×</div>
-                <div class="model-badge">Architecture: RRDBNet</div>
+                <div class="model-badge">Architecture: RCAN v2 <button class="info-btn" data-info-title="RCAN v2 Super-Resolution Architecture" data-info-content="Residual Channel Attention Network (RCAN v2) utilizes deep residual-in-residual structures with channel attention mechanisms. It adaptively reshapes feature maps to recover fine-grained textures and high-frequency details.">i</button></div>
             </div>
         </header>
 
@@ -29,8 +30,8 @@
                 
                 <!-- UPLOAD SECTION -->
                 <div class="panel" id="upload-panel">
-                    <h2>Workspace</h2>
-                    <div class="upload-zone" id="lr-drop-zone">
+                    <h2>Workspace <button class="info-btn" data-info-title="Multispectral GeoTIFF & Image Upload" data-info-content="Upload 4-band Sentinel-2 GeoTIFFs (B2-Blue, B3-Green, B4-Red, B8-NIR) or standard RGB images. Multispectral files preserve physical surface reflectance values normalized to /3000 space.">i</button></h2>
+                    <div class="upload-zone" id="lr-drop-zone" title="Drop your satellite image here to begin super-resolution processing">
                         <span class="upload-icon">⇪</span>
                         <p>Drop Image Here</p>
                         <small>PNG / JPG / JPEG / TIFF / GeoTIFF / JP2</small>
@@ -38,23 +39,22 @@
                     </div>
 
                     <div class="action-bar">
-                        <button id="start-btn" class="primary-btn" disabled>Start Super-Resolution</button>
+                        <button id="start-btn" class="primary-btn" disabled title="Upscale your image 4× using RCAN v2">Start Super-Resolution</button>
                     </div>
                 </div>
 
                 <!-- PROCESSING STATE -->
                 <div class="panel hidden" id="processing-panel">
                     <h2>Processing Status</h2>
-                    <div class="status-steps">
-                        <div class="step" id="step-upload"><span class="indicator"></span> Analyzing Input</div>
-                        <div class="step" id="step-infer"><span class="indicator"></span> Running Super-Resolution</div>
-                        <div class="step" id="step-output"><span class="indicator"></span> Generating Result</div>
+                    <div class="progress-wrapper">
+                        <div class="progress-bar" id="progress-bar"></div>
                     </div>
+                    <p class="progress-status" id="progress-status">Preparing…</p>
                 </div>
 
                 <!-- DATA PANEL -->
                 <div class="panel hidden" id="metadata-panel">
-                    <h2>Image Statistics</h2>
+                    <h2>Image Statistics <button class="info-btn" data-info-title="Geospatial Metadata & File Specs" data-info-content="Displays dimensions, spatial resolution, band configurations, and geotransform matrix metadata extracted from input GeoTIFF metadata headers.">i</button></h2>
                     <div class="stats-table-wrapper">
                         <table class="metadata-table">
                             <tbody id="metadata-tbody">
@@ -63,8 +63,10 @@
                         </table>
                     </div>
                     <div class="action-bar">
-                        <button id="download-image-btn" class="secondary-btn">Download Super-Resolved Image</button>
-                        <button id="validate-btn" class="secondary-btn" style="margin-top: 0.5rem;">Validate Quality</button>
+                        <button id="scroll-to-seg-btn" class="scroll-to-seg-btn hidden" style="width: 100%; margin-bottom: 0.5rem; justify-content: center;">Scroll to Segmentation ↓</button>
+                        <button id="download-image-btn" class="secondary-btn" title="Save the super-resolved image in original format">Download Super-Resolved Image</button>
+                        <button id="validate-btn" class="secondary-btn" style="margin-top: 0.5rem;" title="Compare against a high-resolution ground truth">Validate Quality</button>
+                        <button id="upload-new-btn" class="secondary-btn" style="margin-top: 0.5rem;">Upload New Image</button>
                     </div>
                 </div>
             </aside>
@@ -81,8 +83,6 @@
                         <div class="toolbar-left">
                             <div class="mode-toggles">
                                 <button class="mode-btn active" data-mode="side">SIDE BY SIDE</button>
-                                <button class="mode-btn" data-mode="split">SPLIT VIEW</button>
-                                <button class="mode-btn" data-mode="overlay">OVERLAY</button>
                             </div>
                         </div>
                         <div class="toolbar-center">
@@ -106,23 +106,12 @@
                             </div>
                         </div>
 
-                        <!-- Divider for Split View -->
-                        <div id="split-divider" class="split-divider hidden">
-                            <div class="split-handle"></div>
-                        </div>
-
                         <!-- SR Viewer -->
                         <div class="viewer-pane" id="pane-sr" data-target="sr">
-                            <div class="viewer-label">SUPER-RESOLVED</div>
+                            <div class="viewer-label" id="sr-viewer-label">SUPER-RESOLVED</div>
                             <div class="canvas-container" id="container-sr">
                                 <img id="img-sr" class="viewer-img" alt="Super-Resolved">
                             </div>
-                        </div>
-                        
-                        <!-- Opacity Slider for Overlay Mode -->
-                        <div id="overlay-controls" class="overlay-controls hidden">
-                            <span>Opacity:</span>
-                            <input type="range" id="opacity-slider" min="0" max="1" step="0.01" value="0.5">
                         </div>
                     </div>
 
@@ -147,7 +136,7 @@
         <!-- LAND COVER ANALYSIS (populated after segmentation inference) -->
         <section id="segmentation-section" class="seg-section hidden">
             <div class="seg-header">
-                <h2 class="seg-title">Land Cover Analysis</h2>
+                <h2 class="seg-title">Land Cover Analysis <button class="info-btn" data-info-title="Downstream Land Cover Segmentation" data-info-content="Uses SegFormer-B2 trained on LoveDA land cover classes. Running segmentation directly on the generated SR image evaluates spatial geometry retention and confirms spectral class boundary preservation for geospatial AI tasks.">i</button></h2>
                 <span class="seg-subtitle">SegFormer-B2 · LoveDA Classes · Inference on SR Output</span>
             </div>
 
@@ -197,6 +186,19 @@
                 </div>
             </div>
         </section>
+    </div>
+
+    <!-- GLOBAL INFO MODAL -->
+    <div id="info-modal-backdrop" class="info-modal-backdrop hidden">
+        <div class="info-modal-card">
+            <div class="info-modal-header">
+                <h3 id="info-modal-title">Information</h3>
+                <button id="info-modal-close" class="info-modal-close">&times;</button>
+            </div>
+            <div class="info-modal-body" id="info-modal-body">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
     </div>
 
     <script src="app.js?v=2"></script>

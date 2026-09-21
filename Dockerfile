@@ -1,32 +1,63 @@
-FROM python:3.10-slim
+# Multi-stage Dockerfile for Satellite Imagery Super-Resolution Platform
+
+# --- Stage 1: Build virtual environment ---
+FROM python:3.10-slim AS builder
 
 WORKDIR /app
 
-# Install system dependencies if required by Pillow/OpenCV etc (usually libgl1, libglib2.0 for opencv, but we only use Pillow which is fine on slim)
-# Actually, slim doesn't have some build tools, but the wheels for torch and Pillow are prebuilt for slim.
-
-# Install GDAL system dependencies for rasterio (GeoTIFF/JP2 support)
+# Install build-essential and GDAL dependencies for package compilation if needed
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     libgdal-dev \
     gdal-bin \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy and install python dependencies
 COPY requirements.txt .
-RUN pip install --default-timeout=100 --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -U pip setuptools wheel && \
+    pip install --default-timeout=100 --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
-COPY . .
+# --- Stage 2: Final Runtime ---
+FROM python:3.10-slim AS runtime
 
-# Ensure temp_outputs exists
-RUN mkdir -p temp_outputs
+WORKDIR /app
 
-# Expose port
-EXPOSE 8000
+# Install runtime GDAL libraries and curl for container health check
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgdal-dev \
+    gdal-bin \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy virtual environment from builder stage
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Create a non-root user for container security
+RUN useradd -m -u 1000 appuser && \
+    mkdir -p /app/temp_outputs && \
+    chown -R appuser:appuser /app
+
+# Copy application source code and models
+COPY --chown=appuser:appuser backend/ /app/backend/
+COPY --chown=appuser:appuser frontend/ /app/frontend/
+COPY --chown=appuser:appuser model/ /app/model/
 
 # Set environment variables
-ENV MODEL_PATH=/app/model/rcan_improved.pth
-ENV PYTHONUNBUFFERED=1
+ENV MODEL_PATH=/app/model/RCAN_v2.pth \
+    PYTHONUNBUFFERED=1 \
+    PORT=8000
 
-# Start the FastAPI app
+# Container health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+STOPSIGNAL SIGTERM
+USER appuser
+EXPOSE 8000
+
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

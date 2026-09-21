@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 import base64
 
-from backend.model import RCAN
+from backend.model import RCAN, RCAN48
 
 DEFAULT_NORMALIZATION = 3000.0
 TEMP_DIR = os.path.join(os.path.dirname(__file__), "..", "temp_outputs")
@@ -14,10 +14,18 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 
 def load_model(checkpoint_path, device="cpu"):
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-    num_blocks = 12
-    channels = 96
+    
     normalization = checkpoint.get("normalization", DEFAULT_NORMALIZATION)
-    model = RCAN(num_blocks=num_blocks, channels=channels)
+    model_name = checkpoint.get("model_name", "Unknown")
+    
+    if model_name == "RCAN v2":
+        model = RCAN48(groups=6, blocks_per_group=8, channels=96)
+    else:
+        # rcan_improved.pth has incorrect metadata (20/128), must hardcode to 12/96 to match state_dict
+        num_blocks = 12
+        channels = 96
+        model = RCAN(num_blocks=num_blocks, channels=channels)
+        
     model.load_state_dict(checkpoint["model_state_dict"])
     model.to(device)
     model.eval()
@@ -30,8 +38,6 @@ def array_to_base64_png(img_array):
     pil_img.save(buf, format="PNG")
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
-from backend.image_utils import load_image_universal
-
 def run_inference_pipeline(model, device, lr_path, normalization=DEFAULT_NORMALIZATION):
     """
     Executes the SR pipeline for standard RGB images using a 4-channel model adapter.
@@ -39,20 +45,16 @@ def run_inference_pipeline(model, device, lr_path, normalization=DEFAULT_NORMALI
     try:
         ext = os.path.splitext(lr_path)[1].lower()
         if ext in ['.tif', '.tiff']:
-            from backend.image_utils import load_geotiff_raw
+            from backend.image_utils import load_geotiff_raw, normalize_to_uint8
             # Load raw 4-band float32 data
             data, geo_meta = load_geotiff_raw(lr_path)
             width, height = geo_meta["width"], geo_meta["height"]
             orig_format = "TIFF"
             
-            # Create a simple preview from first 3 bands using percentile stretch
-            lr_rgb = np.transpose(data[:3, :, :], (1, 2, 0))
-            p2, p98 = np.percentile(lr_rgb, (2, 98))
-            if p98 > p2:
-                lr_preview_rgb = np.clip((lr_rgb - p2) / (p98 - p2), 0, 1) * 255.0
-            else:
-                lr_preview_rgb = np.zeros_like(lr_rgb)
-            lr_preview = array_to_base64_png(lr_preview_rgb.astype(np.uint8))
+            # Create a simple preview from RGB bands using natural order [0, 1, 2] and global stretch
+            lr_rgb_raw = np.transpose(data[:3], (1, 2, 0))
+            lr_preview_rgb = normalize_to_uint8(lr_rgb_raw)
+            lr_preview = array_to_base64_png(lr_preview_rgb)
             
             lr_norm = data / normalization
             input_tensor = torch.tensor(lr_norm, dtype=torch.float32).unsqueeze(0).to(device)
@@ -92,13 +94,10 @@ def run_inference_pipeline(model, device, lr_path, normalization=DEFAULT_NORMALI
     # 4. 4 -> 3 Channel Extraction for RGB visualization
     if ext in ['.tif', '.tiff']:
         # GeoTIFF path: model output is in /3000 space.
-        # Apply same percentile stretch as notebook for RGB preview.
-        sr_rgb_raw = np.transpose(sr_raw[:3, :, :], (1, 2, 0))  # (H, W, 3)
-        p2, p98 = np.percentile(sr_rgb_raw, (2, 98))
-        if p98 > p2:
-            sr_rgb = (np.clip((sr_rgb_raw - p2) / (p98 - p2), 0, 1) * 255.0).astype(np.uint8)
-        else:
-            sr_rgb = np.zeros_like(sr_rgb_raw, dtype=np.uint8)
+        # Use natural order [0, 1, 2] and global stretch to match /preview
+        sr_rgb_raw = np.transpose(sr_raw[:3], (1, 2, 0))  # (H, W, 3)
+        from backend.image_utils import normalize_to_uint8
+        sr_rgb = normalize_to_uint8(sr_rgb_raw)
     else:
         # RGB path: model output is in [0, 1]. Simple × 255.
         sr_clamped = np.clip(sr_raw, 0, 1)

@@ -88,3 +88,80 @@ class RCAN(nn.Module):
         output = self.tail(features)
         
         return output
+
+# ============================================================
+# RCAN v2 CLASSES
+# ============================================================
+
+class RCAB_v2(nn.Module):
+    def __init__(self, channels=96, reduction=16):
+        super().__init__()
+        self.conv1 = nn.Conv2d(channels, channels, 3, padding=1)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(channels, channels, 3, padding=1)
+
+        self.ca = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(channels, channels // reduction, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(channels // reduction, channels, 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        res = self.conv1(x)
+        res = self.relu(res)
+        res = self.conv2(res)
+        res = res * self.ca(res)
+        return x + res
+
+
+class ResidualGroup(nn.Module):
+    def __init__(self, channels=96, blocks=8):
+        super().__init__()
+        self.rcabs = nn.Sequential(
+            *[RCAB_v2(channels) for _ in range(blocks)]
+        )
+        self.conv = nn.Conv2d(channels, channels, 3, padding=1)
+
+    def forward(self, x):
+        res = self.rcabs(x)
+        res = self.conv(res)
+        return x + res
+
+
+class RCAN48(nn.Module):
+    def __init__(self, groups=6, blocks_per_group=8, channels=96):
+        super().__init__()
+        self.head = nn.Conv2d(4, channels, 3, padding=1)
+
+        self.body = nn.Sequential(
+            *[ResidualGroup(channels, blocks_per_group) for _ in range(groups)]
+        )
+        self.body_conv = nn.Conv2d(channels, channels, 3, padding=1)
+
+        self.up1 = nn.Sequential(
+            nn.Conv2d(channels, channels * 4, 3, padding=1),
+            nn.PixelShuffle(2),
+            nn.ReLU(inplace=True)
+        )
+
+        self.up2 = nn.Sequential(
+            nn.Conv2d(channels, channels * 4, 3, padding=1),
+            nn.PixelShuffle(2),
+            nn.ReLU(inplace=True)
+        )
+
+        self.tail = nn.Conv2d(channels, 4, 3, padding=1)
+
+    def forward(self, x):
+        f0 = self.head(x)
+        
+        f = self.body(f0)
+        f = self.body_conv(f)
+        f = f + f0
+
+        f = self.up1(f)
+        f = self.up2(f)
+
+        return self.tail(f)
