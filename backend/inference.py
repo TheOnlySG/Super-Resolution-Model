@@ -145,6 +145,9 @@ def run_inference_pipeline(model, device, lr_path, normalization=DEFAULT_NORMALI
     else:
         sr_pil.save(sr_out_path, format="PNG")
     
+    input_channels = int(data.shape[0]) if ext in ['.tif', '.tiff'] else 3
+    output_channels = int(sr_raw.shape[0]) if ext in ['.tif', '.tiff'] else 3
+
     result = {
         "status": "success",
         "job_id": job_id,
@@ -153,14 +156,14 @@ def run_inference_pipeline(model, device, lr_path, normalization=DEFAULT_NORMALI
                 "filename": os.path.basename(lr_path),
                 "width": width,
                 "height": height,
-                "channels": 3,
+                "channels": input_channels,
                 "size_bytes": file_size,
                 "format": orig_format
             },
             "output": {
                 "width": sr_width,
                 "height": sr_height,
-                "channels": 3,
+                "channels": output_channels,
                 "scale_factor": 4,
                 "format": orig_format
             },
