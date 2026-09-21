@@ -13,17 +13,30 @@ set /p choice="Enter your choice (1 or 2): "
 
 if "%choice%"=="1" (
     echo.
-    echo Building Docker image...
-    docker build -t srm-app .
-    if !errorlevel! neq 0 (
-        echo Docker build failed!
-        pause
-        exit /b !errorlevel!
+    docker compose version >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo Building and starting Docker container with 'docker compose'...
+        docker compose up --build
+    ) else (
+        where docker-compose >nul 2>&1
+        if !errorlevel! equ 0 (
+            echo Building and starting Docker container with 'docker-compose'...
+            docker-compose up --build
+        ) else (
+            echo Docker Compose not found. Falling back to direct 'docker build' ^& 'docker run'...
+            echo Building Docker image...
+            docker build -t sih_sr_app .
+            if !errorlevel! neq 0 (
+                echo Docker build failed!
+                pause
+                exit /b !errorlevel!
+            )
+            echo.
+            echo Starting Docker container on http://localhost:8000...
+            echo Close this window or press Ctrl+C to stop.
+            docker run --rm -p 8000:8000 sih_sr_app
+        )
     )
-    echo.
-    echo Starting Docker container on http://localhost:8000...
-    echo Close this window or press Ctrl+C to stop.
-    docker run --rm -p 8000:8000 srm-app
 ) else if "%choice%"=="2" (
     echo.
     echo Setting up Python virtual environment...

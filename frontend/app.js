@@ -30,7 +30,7 @@ let lrFile = null;
 let currentJobId = null;
 
 let currentMode = 'side'; // 'side', 'split', 'overlay'
-let isSync = true;
+let isSync = false;
 let activeViewer = 'original'; // 'original' or 'sr'
 
 const state = {
@@ -672,6 +672,13 @@ function restoreWorkstationState(data) {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
+    syncCheckbox.checked = isSync;
+    if (!isSync) {
+        workspace.classList.add('sync-off');
+        activeIndicator.classList.remove('hidden');
+        updateActiveIndicator();
+    }
+
     const navEntries = performance.getEntriesByType("navigation");
     const isReload = navEntries.length > 0 && navEntries[0].type === "reload";
 

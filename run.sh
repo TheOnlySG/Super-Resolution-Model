@@ -12,8 +12,19 @@ read -p "Enter your choice (1 or 2): " choice
 
 if [ "$choice" = "1" ]; then
     echo ""
-    echo "Building and starting Docker container with docker-compose..."
-    docker compose up --build || { echo "Docker Compose failed!"; exit 1; }
+    if docker compose version &> /dev/null; then
+        echo "Building and starting Docker container with 'docker compose'..."
+        docker compose up --build || { echo "Docker Compose failed!"; exit 1; }
+    elif command -v docker-compose &> /dev/null; then
+        echo "Building and starting Docker container with 'docker-compose'..."
+        docker-compose up --build || { echo "Docker Compose failed!"; exit 1; }
+    elif command -v docker &> /dev/null; then
+        echo "Docker Compose not found. Falling back to direct 'docker build' & 'docker run'..."
+        docker build -t sih_sr_app . && docker run --rm -p 8000:8000 sih_sr_app || { echo "Docker run failed!"; exit 1; }
+    else
+        echo "Error: Docker is not installed or not available in PATH."
+        exit 1
+    fi
 elif [ "$choice" = "2" ]; then
     echo ""
     echo "Setting up Python virtual environment..."
