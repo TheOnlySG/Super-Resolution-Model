@@ -7,6 +7,7 @@ from PIL import Image
 import base64
 
 from backend.model import RCAN, RCAN48
+from backend.image_utils import load_image_universal
 
 DEFAULT_NORMALIZATION = 3000.0
 TEMP_DIR = os.path.join(os.path.dirname(__file__), "..", "temp_outputs")
