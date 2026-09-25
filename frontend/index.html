@@ -62,11 +62,11 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="action-bar">
-                        <button id="scroll-to-seg-btn" class="scroll-to-seg-btn hidden" style="width: 100%; margin-bottom: 0.5rem; justify-content: center;">Scroll to Segmentation ↓</button>
+                    <div class="action-bar" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <button id="validate-btn" class="secondary-btn highlight-btn" title="Compare against a high-resolution ground truth">Validate Quality</button>
+                        <button id="upload-new-btn" class="secondary-btn">Upload New Image</button>
                         <button id="download-image-btn" class="secondary-btn" title="Save the super-resolved image in original format">Download Super-Resolved Image</button>
-                        <button id="validate-btn" class="secondary-btn" style="margin-top: 0.5rem;" title="Compare against a high-resolution ground truth">Validate Quality</button>
-                        <button id="upload-new-btn" class="secondary-btn" style="margin-top: 0.5rem;">Upload New Image</button>
+                        <button id="scroll-to-seg-btn" class="scroll-to-seg-btn hidden" style="width: 100%; justify-content: center;">Scroll to Segmentation ↓</button>
                     </div>
                 </div>
             </aside>
@@ -80,13 +80,8 @@
                 <div id="viewer-container" class="hidden">
                     
                     <div class="toolbar">
-                        <div class="toolbar-left">
-                            <div class="mode-toggles">
-                                <button class="mode-btn active" data-mode="side">SIDE BY SIDE</button>
-                            </div>
-                        </div>
-                        <div class="toolbar-center">
-                            <span id="active-indicator" class="active-indicator hidden">ACTIVE: ORIGINAL</span>
+                        <div class="toolbar-note" style="flex-grow: 1; padding: 0 1rem; color: #9ca3af; font-size: 0.85rem; font-style: italic;">
+                            Note: This browser preview uses an 8-bit compressed visual. The Super-Resolution model always processes your original, full-quality (e.g., 16-bit GeoTIFF) upload.
                         </div>
                         <div class="toolbar-right">
                             <label class="sync-toggle">
@@ -138,6 +133,12 @@
             <div class="seg-header">
                 <h2 class="seg-title">Land Cover Analysis <button class="info-btn" data-info-title="Downstream Land Cover Segmentation" data-info-content="Uses SegFormer-B2 trained on LoveDA land cover classes. Running segmentation directly on the generated SR image evaluates spatial geometry retention and confirms spectral class boundary preservation for geospatial AI tasks.">i</button></h2>
                 <span class="seg-subtitle">SegFormer-B2 · LoveDA Classes · Inference on SR Output</span>
+            </div>
+            
+            <div class="seg-note-card">
+                <strong>Note:</strong> The LoveDA segmentation analyzer is trained on 0.3m high-resolution aerial imagery. Uploading 10m-30m satellite imagery (like Sentinel/Landsat) causes a domain shift that may degrade segmentation accuracy. This is purely an analytical preview and <strong>does not affect</strong> the core Super-Resolution output, which always processes your exact uploaded image.
+                <br><br>
+                <em>We added this segmentation feature specifically to prove that our Super-Resolution model faithfully preserves structural spatial boundaries and spectral land-cover information, and does not merely hallucinate or generate random pixels.</em>
             </div>
 
             <!-- Loading state -->

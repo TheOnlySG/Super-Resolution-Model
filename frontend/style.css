@@ -117,6 +117,17 @@ h2 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; col
     background: rgba(255, 255, 255, 0.05);
     border-color: var(--text-secondary);
 }
+.highlight-btn {
+    background: linear-gradient(135deg, #f59e0b, #ea580c) !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4) !important;
+}
+.highlight-btn:hover {
+    background: linear-gradient(135deg, #fbbf24, #f97316) !important;
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6) !important;
+}
 
 /* Processing & Tables */
 .progress-wrapper {
@@ -284,6 +295,21 @@ h2 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; col
 
 .seg-header {
     margin-bottom: 1.5rem;
+}
+
+.seg-note-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--accent-color);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+.seg-note-card strong {
+    color: var(--text-primary);
 }
 .seg-title {
     font-size: 1.25rem;

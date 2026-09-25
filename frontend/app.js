@@ -20,9 +20,7 @@ const containerOriginal = document.getElementById('container-original');
 const containerSR = document.getElementById('container-sr');
 
 // Controls
-const modeBtns = document.querySelectorAll('.mode-btn');
 const syncCheckbox = document.getElementById('sync-checkbox');
-const activeIndicator = document.getElementById('active-indicator');
 const zoomLevelText = document.getElementById('zoom-level-text');
 
 // State
@@ -381,25 +379,14 @@ function setMode(mode) {
         }
     });
 }
-
-modeBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        modeBtns.forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        setMode(e.target.getAttribute('data-mode'));
-    });
-});
-
+// Mode buttons removed
 syncCheckbox.addEventListener('change', (e) => {
     isSync = e.target.checked;
     if (isSync) {
         workspace.classList.remove('sync-off');
-        activeIndicator.classList.add('hidden');
         syncFrom('original'); // Force sync state
     } else {
         workspace.classList.add('sync-off');
-        activeIndicator.classList.remove('hidden');
-        updateActiveIndicator();
     }
 });
 
@@ -407,11 +394,10 @@ function setActiveViewer(v) {
     activeViewer = v;
     paneOriginal.classList.toggle('is-active', v === 'original');
     paneSR.classList.toggle('is-active', v === 'sr');
-    if (!isSync) updateActiveIndicator();
 }
 
 function updateActiveIndicator() {
-    activeIndicator.innerText = "ACTIVE: " + (activeViewer === 'original' ? 'ORIGINAL' : 'SUPER-RESOLVED');
+    // Removed
 }
 
 // Click to set active
@@ -675,8 +661,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     syncCheckbox.checked = isSync;
     if (!isSync) {
         workspace.classList.add('sync-off');
-        activeIndicator.classList.remove('hidden');
-        updateActiveIndicator();
     }
 
     const navEntries = performance.getEntriesByType("navigation");

@@ -5,8 +5,8 @@ echo "   Satellite Imagery Super-Resolution"
 echo "========================================="
 echo ""
 echo "How would you like to run the application?"
-echo "[1] Docker Compose (Recommended, requires Docker installed)"
-echo "[2] Python Virtual Environment (Requires Python installed)"
+echo "[1] Docker Compose (Only for Deployment , requires Docker installed and takes time)"
+echo "[2] Python Virtual Environment (Recommended for local running,Requires Python installed)"
 echo ""
 read -p "Enter your choice (1 or 2): " choice
 
